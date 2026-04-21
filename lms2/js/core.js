@@ -407,3 +407,31 @@ function typeIcon(type) {
 document.getElementById("b-inst").textContent = NexusDB.platform.institution;
 const s = getSession();
 if (s) redirectByRole(s);
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// FUNCIÓN PARA EL BOTÓN "CREAR CURSO"
+export async function crearNuevoCurso(event) {
+    // Evitamos que la página se recargue sola
+    if(event) event.preventDefault();
+
+    try {
+        const nuevoCurso = {
+            titulo: document.querySelector('input[placeholder="CURSO PRUEBA A"]').value,
+            subtitulo: document.querySelector('input[placeholder="SUBTITULO PRUEBA"]').value,
+            descripcion: document.querySelector('textarea').value,
+            categoria: document.querySelector('input[placeholder="ESCUELA ABIERTA"]').value,
+            nivel: document.querySelector('select').value,
+            fechaCreacion: new Date()
+        };
+
+        const docRef = await addDoc(collection(db, "cursos"), nuevoCurso);
+        alert("✅ Curso creado exitosamente en la nube.");
+        location.reload(); // Para que limpie el formulario
+    } catch (e) {
+        console.error("Error al guardar curso: ", e);
+        alert("Ocurrió un error al guardar.");
+    }
+}
+
+// Vinculamos la función al mundo global
+window.crearNuevoCurso = crearNuevoCurso;
