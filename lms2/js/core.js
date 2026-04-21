@@ -15,8 +15,37 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
+// LA FUNCIÓN DEL GUARDIA DE SEGURIDAD
+export async function iniciarSesionSegura() {
+  try {
+    // 1. Abre la ventana de Google
+    const resultado = await signInWithPopup(auth, provider);
+    const emailUsuario = resultado.user.email;
 
+    // 2. Revisa la "Lista de Invitados" en tu base de datos
+    // Asumiremos que crearás una lista llamada 'usuarios_aprobados'
+    const referenciaUsuario = doc(db, "usuarios_aprobados", emailUsuario);
+    const datosUsuario = await getDoc(referenciaUsuario);
+
+    // 3. Toma la decisión
+    if (datosUsuario.exists()) {
+      alert("¡Bienvenido a la plataforma!");
+      // Aquí luego programaremos que lo envíe a /pages/student/dashboard.html
+    } else {
+      alert("Acceso denegado: El administrador aún no ha vinculado tu cuenta institucional a la plataforma.");
+      await signOut(auth); // Lo expulsa inmediatamente
+    }
+  } catch (error) {
+    console.error("Error al iniciar sesión:", error);
+  }
+}
+
+// Asignar la función a la ventana global para que el botón HTML la pueda usar
+window.iniciarSesionSegura = iniciarSesionSegura;
 // ═══════════════════════════════════════════════════════
 //  NEXUS LMS — Core Data Layer
 //  Estado global, persistencia y helpers
