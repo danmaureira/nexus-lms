@@ -389,3 +389,7 @@ function statusBadge(status) {
 function typeIcon(type) {
   return { pdf:"📄", genially:"✨", video:"▶", link:"🔗", assignment:"📝", forum:"💬", survey:"📋", reflection:"💭" }[type] || "📌";
 }
+// --- Inicialización de la vista ---
+document.getElementById("b-inst").textContent = NexusDB.platform.institution;
+const s = getSession();
+if (s) redirectByRole(s);
