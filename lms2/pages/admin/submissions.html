@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entregas — Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .submission-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; margin-bottom:12px; }
+    .sc-header { padding:16px 20px; display:flex; align-items:flex-start; gap:14px; }
+    .sc-type-icon { width:42px;height:42px;border-radius:10px;background:var(--acc-light);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0; }
+    .sc-info h4 { font-size:14px;font-weight:600;margin-bottom:3px; }
+    .sc-meta { font-size:12.5px;color:var(--dk3);display:flex;gap:12px;flex-wrap:wrap; }
+    .sc-body { padding:0 20px 16px 76px; }
+    .sc-content { background:var(--surface);border-radius:var(--r);padding:12px 14px;font-size:13.5px;color:var(--dk2);line-height:1.7;margin-bottom:12px; }
+    .sc-footer { padding:12px 20px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px; }
+    .feedback-area { width:100%;padding:10px 13px;border:1.5px solid var(--border2);border-radius:var(--r);font-family:var(--font);font-size:13.5px;color:var(--dk);resize:vertical;min-height:80px;transition:border-color .15s; }
+    .feedback-area:focus { border-color:var(--p);outline:none; }
+    .rubric-mini { border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px; }
+    .rubric-mini-head { background:var(--surface);padding:8px 12px;font-size:12px;font-weight:700;color:var(--dk3);border-bottom:1px solid var(--border); }
+    .rubric-criterion { display:grid;padding:8px 12px;gap:6px;border-bottom:1px solid var(--border); }
+    .rubric-criterion:last-child { border-bottom:none; }
+    .level-pills { display:flex;gap:5px;flex-wrap:wrap; }
+    .level-pill { padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--dk2);transition:all .15s; }
+    .level-pill:hover { border-color:var(--p);color:var(--p); }
+    .level-pill.selected { background:var(--p);color:white;border-color:var(--p); }
+    .score-display { font-family:var(--font-d);font-size:2.5rem;font-weight:600;color:var(--p);text-align:center;padding:12px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div><h1>Gestión de Entregas</h1><p id="subs-label">Cargando...</p></div>
+        <div style="display:flex;gap:8px;">
+          <select class="form-input" style="max-width:200px;" id="filter-course" onchange="renderSubs()"><option value="">Todos los cursos</option></select>
+          <select class="form-input" style="max-width:160px;" id="filter-status" onchange="renderSubs()">
+            <option value="">Todos</option><option value="submitted">Pendientes</option><option value="graded">Calificados</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card"><div class="num" id="st-total">0</div><div class="lbl">Total entregas</div></div>
+        <div class="stat-card accent"><div class="num" id="st-pending">0</div><div class="lbl">Por revisar</div></div>
+        <div class="stat-card success"><div class="num" id="st-graded">0</div><div class="lbl">Calificadas</div></div>
+        <div class="stat-card dark"><div class="num" id="st-avg">—</div><div class="lbl">Nota promedio</div></div>
+      </div>
+
+      <div id="subs-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALIFICACIÓN -->
+<div class="modal-bg" id="modal-grade">
+  <div class="modal-box lg">
+    <div class="modal-head"><h3>Calificar entrega</h3><button class="modal-close" data-modal-close>×</button></div>
+    <div class="modal-body" id="grade-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGrade()">Guardar calificación y retroalimentación</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession();
+  if (!me || (me.role !== "admin" && me.role !== "teacher")) window.location.href = "../../index.html";
+
+  if (me.role === "admin") { buildAdminSidebar("submissions"); buildTopbar("Entregas", ["Admin", "Entregas"]); }
+  else { buildTeacherSidebar("submissions"); buildTopbar("Entregas", ["Docente", "Entregas"]); }
+  initModals();
+
+  // Poblar filtro cursos
+  const cSel = document.getElementById("filter-course");
+  NexusDB.courses.forEach(c => cSel.innerHTML += `<option value="${c.id}">${c.title.split(":")[0]}</option>`);
+
+  // Stats
+  function updateStats(subs) {
+    const pending = subs.filter(s=>s.status==="submitted").length;
+    const graded  = subs.filter(s=>s.status==="graded").length;
+    const scores  = subs.filter(s=>s.score!=null).map(s=>s.score);
+    const avg     = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : "—";
+    document.getElementById("st-total").textContent   = subs.length;
+    document.getElementById("st-pending").textContent = pending;
+    document.getElementById("st-graded").textContent  = graded;
+    document.getElementById("st-avg").textContent     = avg;
+    document.getElementById("subs-label").textContent = `${subs.length} entregas · ${pending} pendientes de revisión`;
+  }
+
+  function renderSubs() {
+    const cFilter = document.getElementById("filter-course").value;
+    const sFilter = document.getElementById("filter-status").value;
+    let list = NexusDB.submissions;
+    if (me.role === "teacher") list = list.filter(s => NexusDB.getCourse(s.courseId)?.teacherId === me.id);
+    if (cFilter) list = list.filter(s => s.courseId === cFilter);
+    if (sFilter) list = list.filter(s => s.status  === sFilter);
+    updateStats(list);
+
+    const cont = document.getElementById("subs-container");
+    cont.innerHTML = "";
+    if (!list.length) {
+      cont.innerHTML = `<div class="empty-state"><div class="icon">📭</div><h3>Sin entregas</h3><p>No hay entregas que coincidan con los filtros.</p></div>`;
+      return;
+    }
+    list.forEach(sub => {
+      const course = NexusDB.getCourse(sub.courseId);
+      const mod    = course?.modules.find(m=>m.id===sub.moduleId);
+      const act    = mod?.activities.find(a=>a.id===sub.activityId);
+      const div = document.createElement("div");
+      div.className = "submission-card";
+      div.innerHTML = `
+        <div class="sc-header">
+          <div class="sc-type-icon">${typeIcon(sub.type)}</div>
+          <div class="sc-info" style="flex:1;">
+            <h4>${act?.title||"Actividad"}</h4>
+            <div class="sc-meta">
+              <span>👤 ${sub.userName}</span>
+              <span>📚 ${course?.title.split(":")[0]||"—"} · Módulo ${sub.moduleId}</span>
+              <span>🕒 ${timeAgo(sub.submittedAt)}</span>
+              ${sub.score!=null?`<span>⭐ ${sub.score}/${act?.maxScore||100}</span>`:""}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${statusBadge(sub.status)}
+          </div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-content">${sub.content||"Sin contenido de texto."}</div>
+          ${sub.fileName?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:16px;">📎</span><a href="${sub.fileUrl||"#"}" style="font-size:13.5px;color:var(--p);font-weight:500;">${sub.fileName}</a></div>`:""}
+          ${sub.feedback?`<div class="alert alert-success" style="font-size:13px;"><strong>Retroalimentación:</strong> ${sub.feedback}</div>`:""}
+        </div>
+        <div class="sc-footer">
+          ${sub.status==="submitted"
+            ? `<button class="btn btn-primary btn-sm" onclick="openGrade('${sub.id}')">Calificar y retroalimentar</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="openGrade('${sub.id}')">Editar calificación</button>`}
+          <button class="btn btn-ghost btn-sm" onclick="quickFeedback('${sub.id}')">Comentar rápido</button>
+        </div>`;
+      cont.appendChild(div);
+    });
+  }
+
+  let currentSubId = null;
+  let rubricSelections = {};
+
+  function openGrade(subId) {
+    currentSubId = subId;
+    rubricSelections = {};
+    const sub   = NexusDB.submissions.find(s=>s.id===subId);
+    const course = NexusDB.getCourse(sub.courseId);
+    const mod   = course?.modules.find(m=>m.id===sub.moduleId);
+    const act   = mod?.activities.find(a=>a.id===sub.activityId);
+
+    let html = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--dk3);margin-bottom:2px;">Entrega de <strong style="color:var(--dk);">${sub.userName}</strong></div>
+        <div style="font-size:13px;color:var(--dk3);">${act?.title||"Actividad"}</div>
+      </div>
+      <div class="sc-content" style="background:var(--surface);border-radius:var(--r);padding:12px;font-size:13.5px;margin-bottom:16px;">${sub.content||"Sin texto"}</div>`;
+
+    if (act?.rubric) {
+      html += `<div class="rubric-mini"><div class="rubric-mini-head">Rúbrica de evaluación — ${act.rubric.title}</div>`;
+      act.rubric.criteria.forEach((c,ci) => {
+        html += `<div class="rubric-criterion">
+          <div style="font-size:13px;font-weight:600;">${c.name}</div>
+          <div class="level-pills">
+            ${c.levels.map((l,li)=>`
+              <div class="level-pill ${sub.rubricScores?.[ci]===li?"selected":""}" onclick="selectLevel(this,${ci},${li},${c.weights[li]},${act.maxScore||100})" data-ci="${ci}" data-li="${li}" data-pts="${c.weights[li]}">
+                ${l} (${c.weights[li]} pts)
+              </div>`).join("")}
+          </div>
+        </div>`;
+      });
+      html += `</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+          <div style="flex:1;font-size:13.5px;color:var(--dk3);">Puntaje calculado con rúbrica:</div>
+          <div class="score-display" id="rubric-score-display">—</div>
+        </div>`;
+      if (sub.rubricScores) {
+        rubricSelections = sub.rubricScores;
+        recalcScore(act);
+      }
+    }
+
+    html += `
+      <div class="form-group">
+        <label class="form-label">Nota final (${act?.maxScore||100} puntos máx.)</label>
+        <input class="form-input" type="number" id="grade-score" value="${sub.score||""}" min="0" max="${act?.maxScore||100}" style="max-width:120px;" placeholder="Ej: 85">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Retroalimentación para el estudiante</label>
+        <textarea class="feedback-area" id="grade-feedback" placeholder="Escribe una retroalimentación clara y constructiva. Indica qué aspectos destacan y qué puede mejorar...">${sub.feedback||""}</textarea>
+        <span class="form-hint">El estudiante verá este mensaje directamente en su entrega.</span>
+      </div>`;
+
+    document.getElementById("grade-body").innerHTML = html;
+    openModal("modal-grade");
+  }
+
+  function selectLevel(el, ci, li, pts, maxScore) {
+    document.querySelectorAll(`[data-ci="${ci}"]`).forEach(p=>p.classList.remove("selected"));
+    el.classList.add("selected");
+    rubricSelections[ci] = li;
+    const sub   = NexusDB.submissions.find(s=>s.id===currentSubId);
+    const course = NexusDB.getCourse(sub.courseId);
+    const mod   = course?.modules.find(m=>m.id===sub.moduleId);
+    const act   = mod?.activities.find(a=>a.id===sub.activityId);
+    recalcScore(act);
+  }
+
+  function recalcScore(act) {
+    if (!act?.rubric) return;
+    const maxPerCriterion = Math.max(...act.rubric.criteria[0].weights);
+    const total = Object.entries(rubricSelections).reduce((sum,[ci,li]) => sum + act.rubric.criteria[ci].weights[li], 0);
+    const maxTotal = act.rubric.criteria.reduce((sum,c) => sum + Math.max(...c.weights), 0);
+    const score = maxTotal > 0 ? Math.round((total/maxTotal)*(act.maxScore||100)) : 0;
+    const disp = document.getElementById("rubric-score-display");
+    if (disp) { disp.textContent = score; document.getElementById("grade-score").value = score; }
+  }
+
+  function saveGrade() {
+    const sub = NexusDB.submissions.find(s=>s.id===currentSubId);
+    if (!sub) return;
+    sub.score = parseFloat(document.getElementById("grade-score").value) || null;
+    sub.feedback = document.getElementById("grade-feedback").value;
+    sub.rubricScores = { ...rubricSelections };
+    sub.status = "graded";
+    closeModal("modal-grade");
+    renderSubs();
+  }
+
+  function quickFeedback(subId) {
+    currentSubId = subId;
+    const sub = NexusDB.submissions.find(s=>s.id===subId);
+    const fb = prompt("Escribe un comentario rápido:", sub.feedback||"");
+    if (fb !== null) { sub.feedback = fb; if (sub.status==="submitted") sub.status="reviewed"; renderSubs(); }
+  }
+
+  renderSubs();
+</script>
+</body>
+</html>

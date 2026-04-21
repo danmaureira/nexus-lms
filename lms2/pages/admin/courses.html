@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cursos — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .filter-bar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+    .course-admin-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-xl); overflow:hidden; }
+    .cac-cover { height:90px; position:relative; }
+    .cac-cover-gradient { position:absolute;inset:0; }
+    .cac-body { padding:16px; }
+    .cac-title { font-family:var(--font-d); font-size:15px; font-weight:600; color:var(--dk); margin-bottom:4px; line-height:1.3; }
+    .cac-sub   { font-size:12.5px; color:var(--dk3); margin-bottom:10px; }
+    .cac-meta  { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cac-actions { display:flex; gap:6px; padding:12px 16px; border-top:1px solid var(--border); background:var(--surface); }
+    .enroll-bar { display:flex; align-items:center; gap:8px; }
+    .enroll-count { font-size:12px; color:var(--dk3); white-space:nowrap; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div><h1>Gestión de Cursos</h1><p id="course-count-label">Cargando...</p></div>
+        <button class="btn btn-primary" onclick="openModal('modal-new-course')">+ Nuevo curso</button>
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filter-bar">
+        <input type="text" class="form-input" placeholder="🔍 Buscar curso..." style="max-width:260px;" id="search-input" oninput="filterCourses()">
+        <select class="form-input" style="max-width:160px;" id="filter-status" onchange="filterCourses()">
+          <option value="">Todos los estados</option>
+          <option value="active">Activos</option>
+          <option value="draft">Borradores</option>
+          <option value="archived">Archivados</option>
+        </select>
+        <select class="form-input" style="max-width:180px;" id="filter-cat" onchange="filterCourses()">
+          <option value="">Todas las categorías</option>
+        </select>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" id="view-grid" onclick="setView('grid')" style="font-size:16px;">⊞</button>
+          <button class="btn btn-ghost btn-sm" id="view-list" onclick="setView('list')" style="font-size:16px;">☰</button>
+        </div>
+      </div>
+
+      <div id="courses-container" class="grid-auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO CURSO -->
+<div class="modal-bg" id="modal-new-course">
+  <div class="modal-box lg">
+    <div class="modal-head">
+      <h3>Crear nuevo curso</h3>
+      <button class="modal-close" data-modal-close>×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Título del curso *</label>
+          <input class="form-input" type="text" id="nc-title" placeholder="Ej: Formación Docente 2025">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subtítulo</label>
+          <input class="form-input" type="text" id="nc-subtitle" placeholder="Descripción breve">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción completa</label>
+        <textarea class="form-textarea" id="nc-desc" rows="3" placeholder="Describe los objetivos y contenidos del curso..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <input class="form-input" type="text" id="nc-cat" placeholder="Ej: Formación Docente">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nivel</label>
+          <select class="form-input" id="nc-level">
+            <option>Básico</option><option>Intermedio</option><option>Avanzado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Duración</label>
+          <input class="form-input" type="text" id="nc-dur" placeholder="Ej: 8 semanas">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Máx. estudiantes</label>
+          <input class="form-input" type="number" id="nc-max" value="100" min="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Docente responsable</label>
+          <select class="form-input" id="nc-teacher"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado inicial</label>
+          <select class="form-input" id="nc-status">
+            <option value="draft">Borrador</option>
+            <option value="active">Activo</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color de portada (gradiente)</label>
+        <div style="display:flex;gap:10px;">
+          <input type="color" value="#00a499" id="nc-color1" style="width:44px;height:36px;border:none;border-radius:8px;cursor:pointer;">
+          <input type="color" value="#007f76" id="nc-color2" style="width:44px;height:36px;border:none;border-radius:8px;cursor:pointer;">
+          <div id="nc-preview" style="flex:1;height:36px;border-radius:8px;"></div>
+        </div>
+        <span class="form-hint">Vista previa del color de portada</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="createCourse()">Crear curso</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR CURSO -->
+<div class="modal-bg" id="modal-edit-course">
+  <div class="modal-box lg">
+    <div class="modal-head">
+      <h3>Editar curso</h3>
+      <button class="modal-close" data-modal-close>×</button>
+    </div>
+    <div class="modal-body" id="edit-course-body">
+      <div class="alert alert-info">Selecciona el curso a editar desde la lista.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCourseEdit()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("courses");
+  buildTopbar("Gestión de Cursos", ["Admin", "Cursos"]);
+  initModals();
+
+  document.getElementById("course-count-label").textContent = `${NexusDB.courses.length} cursos en total`;
+
+  // Poblar docentes en select
+  const tSel = document.getElementById("nc-teacher");
+  NexusDB.users.filter(u=>u.role==="teacher"||u.role==="admin").forEach(u => {
+    tSel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+  });
+
+  // Poblar categorías
+  const cats = [...new Set(NexusDB.courses.map(c=>c.category))];
+  const catSel = document.getElementById("filter-cat");
+  cats.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
+
+  // Preview color
+  function updatePreview() {
+    const c1 = document.getElementById("nc-color1").value;
+    const c2 = document.getElementById("nc-color2").value;
+    document.getElementById("nc-preview").style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+  }
+  document.getElementById("nc-color1").addEventListener("input", updatePreview);
+  document.getElementById("nc-color2").addEventListener("input", updatePreview);
+  updatePreview();
+
+  // Render
+  function renderCourses(list) {
+    const c = document.getElementById("courses-container");
+    c.innerHTML = "";
+    if (!list.length) {
+      c.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="icon">⊞</div><h3>Sin resultados</h3><p>No hay cursos que coincidan con tu búsqueda.</p></div>`;
+      return;
+    }
+    list.forEach(course => {
+      const teacher = NexusDB.getUser(course.teacherId);
+      const pct = Math.round((course.enrolledCount / course.maxStudents) * 100);
+      const div = document.createElement("div");
+      div.className = "course-admin-card card-hover";
+      div.innerHTML = `
+        <div class="cac-cover">
+          <div class="cac-cover-gradient" style="background:linear-gradient(${course.coverGradient || '135deg,var(--dk),var(--dk2)'})"></div>
+          <div style="position:absolute;top:10px;right:12px;">${statusBadge(course.status)}</div>
+        </div>
+        <div class="cac-body">
+          <div class="cac-title">${course.title}</div>
+          <div class="cac-sub">${course.subtitle || course.category}</div>
+          <div class="cac-meta">
+            <div style="font-size:12px;color:var(--dk3);">🎓 ${teacher?.name||"—"}</div>
+            <div style="font-size:12px;color:var(--dk3);">${course.duration}</div>
+          </div>
+          <div class="enroll-bar">
+            <div class="prog-bar" style="flex:1;"><div class="prog-fill" style="width:${pct}%"></div></div>
+            <div class="enroll-count">${course.enrolledCount}/${course.maxStudents}</div>
+          </div>
+        </div>
+        <div class="cac-actions">
+          <button class="btn btn-primary btn-xs" onclick="window.location.href='course-editor.html?id=${course.id}'">✏ Editar</button>
+          <button class="btn btn-ghost btn-xs" onclick="editCourse('${course.id}')">⚙ Config</button>
+          <button class="btn btn-ghost btn-xs" onclick="window.location.href='course-report.html?id=${course.id}'">▦ Reporte</button>
+          <button class="btn btn-danger btn-xs" onclick="toggleStatus('${course.id}')">${course.status==="active"?"Pausar":"Activar"}</button>
+        </div>`;
+      c.appendChild(div);
+    });
+  }
+
+  function filterCourses() {
+    const q = document.getElementById("search-input").value.toLowerCase();
+    const st = document.getElementById("filter-status").value;
+    const cat = document.getElementById("filter-cat").value;
+    let list = NexusDB.courses.filter(c =>
+      (!q  || c.title.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)) &&
+      (!st  || c.status === st) &&
+      (!cat || c.category === cat)
+    );
+    renderCourses(list);
+  }
+
+  function setView(v) {
+    const c = document.getElementById("courses-container");
+    c.className = v === "list" ? "" : "grid-auto";
+    if (v === "list") c.style.display = "flex", c.style.flexDirection = "column", c.style.gap = "10px";
+    else c.style = "";
+    filterCourses();
+  }
+
+  function toggleStatus(id) {
+    const c = NexusDB.getCourse(id);
+    if (!c) return;
+    c.status = c.status === "active" ? "draft" : "active";
+    filterCourses();
+  }
+
+  function createCourse() {
+    const t = document.getElementById("nc-title").value.trim();
+    if (!t) { alert("El título es requerido"); return; }
+    const c1 = document.getElementById("nc-color1").value;
+    const c2 = document.getElementById("nc-color2").value;
+    const newCourse = {
+      id: "c" + Date.now(),
+      title: t,
+      subtitle: document.getElementById("nc-subtitle").value,
+      description: document.getElementById("nc-desc").value,
+      coverGradient: `135deg, ${c1}, ${c2}`,
+      category: document.getElementById("nc-cat").value || "General",
+      level: document.getElementById("nc-level").value,
+      duration: document.getElementById("nc-dur").value,
+      teacherId: document.getElementById("nc-teacher").value,
+      status: document.getElementById("nc-status").value,
+      enrollmentOpen: true,
+      maxStudents: parseInt(document.getElementById("nc-max").value)||100,
+      enrolledCount: 0, tags: [], modules: [],
+      createdAt: new Date().toISOString().split("T")[0],
+      updatedAt: new Date().toISOString().split("T")[0]
+    };
+    NexusDB.courses.push(newCourse);
+    closeModal("modal-new-course");
+    filterCourses();
+    document.getElementById("course-count-label").textContent = `${NexusDB.courses.length} cursos en total`;
+  }
+
+  let editingCourseId = null;
+  function editCourse(id) {
+    editingCourseId = id;
+    const c = NexusDB.getCourse(id);
+    document.getElementById("edit-course-body").innerHTML = `
+      <div class="form-group"><label class="form-label">Título</label><input class="form-input" id="ec-title" value="${c.title}"></div>
+      <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-textarea" id="ec-desc" rows="3">${c.description}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Máx. estudiantes</label><input class="form-input" type="number" id="ec-max" value="${c.maxStudents}"></div>
+        <div class="form-group"><label class="form-label">Estado</label>
+          <select class="form-input" id="ec-status">
+            <option value="active" ${c.status==="active"?"selected":""}>Activo</option>
+            <option value="draft"  ${c.status==="draft" ?"selected":""}>Borrador</option>
+            <option value="archived" ${c.status==="archived"?"selected":""}>Archivado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <label class="toggle"><input type="checkbox" id="ec-enroll" ${c.enrollmentOpen?"checked":""}><span class="toggle-track"></span></label>
+        <span class="form-label" style="margin:0;">Inscripción abierta</span>
+      </label></div>`;
+    openModal("modal-edit-course");
+  }
+
+  function saveCourseEdit() {
+    const c = NexusDB.getCourse(editingCourseId);
+    if (!c) return;
+    c.title = document.getElementById("ec-title").value;
+    c.description = document.getElementById("ec-desc").value;
+    c.maxStudents = parseInt(document.getElementById("ec-max").value)||c.maxStudents;
+    c.status = document.getElementById("ec-status").value;
+    c.enrollmentOpen = document.getElementById("ec-enroll").checked;
+    closeModal("modal-edit-course");
+    filterCourses();
+  }
+
+  renderCourses(NexusDB.courses);
+</script>
+</body>
+</html>

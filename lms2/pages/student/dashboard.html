@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Panel — Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .hero-banner {
+      background: linear-gradient(135deg, var(--dk) 0%, #4e5663 100%);
+      border-radius: var(--r-xl); padding: 28px 32px; color: white; margin-bottom: 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      position: relative; overflow: hidden;
+    }
+    .hero-banner::before { content: ""; position: absolute; right: -40px; top: -60px; width: 240px; height: 240px; border-radius: 50%; background: rgba(0,164,153,.12); pointer-events: none; }
+    .hero-banner::after  { content: ""; position: absolute; right: 60px; bottom: -80px; width: 180px; height: 180px; border-radius: 50%; background: rgba(234,118,0,.08); pointer-events: none; }
+    .hero-text h2 { font-family: var(--font-d); font-size: 1.5rem; color: white; margin-bottom: 4px; }
+    .hero-text p  { font-size: 14px; color: rgba(255,255,255,.65); }
+    .hero-stats   { display: flex; gap: 14px; z-index: 1; }
+    .hero-stat { text-align: center; background: rgba(255,255,255,.1); border-radius: 12px; padding: 12px 18px; }
+    .hero-stat .n { font-family: var(--font-d); font-size: 1.8rem; font-weight: 600; color: white; }
+    .hero-stat .l { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 2px; }
+
+    .enrolled-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; display: flex; flex-direction: column; transition: all .2s; }
+    .enrolled-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .ec-cover { height: 100px; position: relative; }
+    .ec-cover-gradient { position: absolute; inset: 0; }
+    .ec-cover-badge { position: absolute; top: 10px; left: 12px; }
+    .ec-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
+    .ec-title { font-family: var(--font-d); font-size: 15px; font-weight: 600; color: var(--dk); margin-bottom: 3px; line-height: 1.3; }
+    .ec-teacher { font-size: 12px; color: var(--dk3); margin-bottom: 10px; }
+    .ec-progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--dk3); margin-bottom: 4px; }
+    .ec-footer { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+
+    .upcoming-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; }
+    .upcoming-date { min-width: 52px; text-align: center; background: var(--p-light); border-radius: 8px; padding: 6px; }
+    .upcoming-date .day  { font-family: var(--font-d); font-size: 1.3rem; font-weight: 600; color: var(--p-dark); line-height: 1; }
+    .upcoming-date .month{ font-size: 10px; color: var(--p); font-weight: 600; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+
+      <!-- HERO -->
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2 id="hero-greeting">Bienvenido/a, —</h2>
+          <p id="hero-sub">Continúa donde lo dejaste</p>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="n" id="hs-courses">0</div><div class="l">Cursos</div></div>
+          <div class="hero-stat"><div class="n" id="hs-pct">0%</div><div class="l">Promedio</div></div>
+        </div>
+      </div>
+
+      <!-- MIS CURSOS -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h2>Mis cursos</h2>
+        <a class="btn btn-ghost btn-sm" href="courses.html">Ver todos →</a>
+      </div>
+      <div class="grid-auto mb-6" id="courses-grid"></div>
+
+      <div class="grid-2" style="gap:20px;">
+        <!-- PRÓXIMAS SESIONES -->
+        <div class="card">
+          <h3 style="margin-bottom:14px;">📡 Próximas sesiones sincrónicas</h3>
+          <div id="upcoming-sessions"></div>
+        </div>
+        <!-- ENTREGAS PENDIENTES -->
+        <div class="card">
+          <h3 style="margin-bottom:14px;">📝 Actividades pendientes</h3>
+          <div id="pending-activities"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "student") window.location.href = "../../index.html";
+  buildStudentSidebar("dashboard");
+  buildTopbar("Mi Panel");
+
+  document.getElementById("hero-greeting").textContent = `Hola, ${me.name.split(" ")[0]} 👋`;
+  document.getElementById("hero-sub").textContent = NexusDB.platform.institution + " · " + new Date().toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long"});
+
+  const enrolled = (me.enrolledCourses||[]);
+  document.getElementById("hs-courses").textContent = enrolled.length;
+
+  let totalPct = 0;
+  const grid = document.getElementById("courses-grid");
+  enrolled.forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    if (!c) return;
+    const teacher = NexusDB.getUser(c.teacherId);
+    const pct = NexusDB.getCourseProgress(me.id, cid);
+    totalPct += pct;
+    const div = document.createElement("div");
+    div.className = "enrolled-card";
+    div.innerHTML = `
+      <div class="ec-cover">
+        <div class="ec-cover-gradient" style="background:linear-gradient(${c.coverGradient||'135deg,var(--dk),var(--dk2)'})"></div>
+        <div class="ec-cover-badge"><span class="badge badge-success" style="background:rgba(255,255,255,.2);color:white;">${c.level}</span></div>
+      </div>
+      <div class="ec-body">
+        <div class="ec-title">${c.title}</div>
+        <div class="ec-teacher">🎓 ${teacher?.name||"—"} · ${c.duration}</div>
+        <div style="flex:1;"></div>
+        <div class="ec-progress-label"><span>Progreso</span><span style="font-weight:600;color:var(--p);">${pct}%</span></div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="ec-footer">
+        <a class="btn btn-primary btn-sm" href="course-view.html?id=${c.id}" style="width:100%;justify-content:center;">Continuar →</a>
+      </div>`;
+    grid.appendChild(div);
+  });
+
+  if (!enrolled.length) grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="icon">📚</div><h3>Sin cursos</h3><p>Aún no estás inscrito en ningún curso. Contacta a tu administrador.</p></div>`;
+
+  document.getElementById("hs-pct").textContent = enrolled.length ? Math.round(totalPct/enrolled.length) + "%" : "0%";
+
+  // Próximas sesiones
+  const sessDiv = document.getElementById("upcoming-sessions");
+  let sessFound = false;
+  enrolled.forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    c?.modules.forEach(m => {
+      if (m.syncSession?.zoomUrl) {
+        sessFound = true;
+        const parts = m.syncSession.date.split(",");
+        sessDiv.innerHTML += `
+          <div class="upcoming-item">
+            <div class="upcoming-date">
+              <div class="day">${parts[1]?.trim().split(" ")[0]||"—"}</div>
+              <div class="month">${parts[1]?.trim().split(" ")[1]||""}</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:13.5px;font-weight:600;">${m.syncSession.title}</div>
+              <div style="font-size:12px;color:var(--dk3);">${c.title.split(":")[0]} · ${m.syncSession.date}</div>
+            </div>
+            <a class="btn btn-primary btn-xs" href="${m.syncSession.zoomUrl}" target="_blank">Unirse</a>
+          </div>`;
+      }
+    });
+  });
+  if (!sessFound) sessDiv.innerHTML = `<div class="text-muted text-sm" style="padding:12px 0;">Sin sesiones programadas próximamente.</div>`;
+
+  // Actividades pendientes
+  const actDiv = document.getElementById("pending-activities");
+  let actFound = false;
+  enrolled.forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    const prog = NexusDB.getStudentProgress(me.id, cid);
+    c?.modules.filter(m=>m.status==="published").forEach(m => {
+      m.activities.filter(a=>a.required).forEach(a => {
+        const submitted = NexusDB.submissions.some(s=>s.courseId===cid&&s.activityId===a.id&&s.userId===me.id);
+        if (!submitted) {
+          actFound = true;
+          actDiv.innerHTML += `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;">
+              <span style="font-size:18px;">${typeIcon(a.type)}</span>
+              <div style="flex:1;">
+                <div style="font-size:13.5px;font-weight:600;">${a.title}</div>
+                <div style="font-size:12px;color:var(--dk3);">${c.title.split(":")[0]}${a.dueDate?` · Entrega: ${formatDate(a.dueDate)}`:""}</div>
+              </div>
+              <a href="course-view.html?id=${cid}" class="btn btn-ghost btn-xs">Ver</a>
+            </div>`;
+        }
+      });
+    });
+  });
+  if (!actFound) actDiv.innerHTML = `<div class="alert alert-success">✅ ¡Sin actividades pendientes!</div>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Cursos — Docente Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .module-editor-row { display:flex; align-items:flex-start; gap:12px; padding:14px; border:1px solid var(--border); border-radius:var(--r-lg); margin-bottom:10px; }
+    .mod-num { width:30px;height:30px;border-radius:50%;background:var(--p);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px; }
+    .mod-body { flex:1; }
+    .activity-mini { display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-top:6px;font-size:13px; }
+    .activity-mini .name { flex:1;font-weight:500; }
+    .resource-mini { display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;margin-top:4px;font-size:12.5px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header"><h1>Mis Cursos</h1><p>Gestiona módulos, recursos y actividades de tus cursos</p></div>
+
+      <div id="courses-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MÓDULO -->
+<div class="modal-bg" id="modal-module">
+  <div class="modal-box lg">
+    <div class="modal-head"><h3 id="mod-modal-title">Editar módulo</h3><button class="modal-close" data-modal-close>×</button></div>
+    <div class="modal-body">
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tab-info">Información</button>
+        <button class="tab-btn" data-tab="tab-resources">Recursos</button>
+        <button class="tab-btn" data-tab="tab-activities">Actividades</button>
+        <button class="tab-btn" data-tab="tab-session">Sesión sincrónica</button>
+      </div>
+
+      <!-- TAB INFO -->
+      <div id="tab-info" class="tab-pane active">
+        <div class="form-group"><label class="form-label">Título del módulo</label><input class="form-input" id="m-title"></div>
+        <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-textarea" id="m-desc" rows="3"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Estado</label>
+            <select class="form-input" id="m-status">
+              <option value="published">Publicado</option>
+              <option value="draft">Borrador</option>
+              <option value="locked">Bloqueado</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Desbloquear después del módulo Nº</label>
+            <input class="form-input" type="number" id="m-unlock" min="0" placeholder="0 = sin prerequisito">
+            <span class="form-hint">Deja en 0 si no requiere prerequisito</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB RESOURCES -->
+      <div id="tab-resources" class="tab-pane">
+        <div id="resources-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addResource()">+ Agregar recurso</button>
+        <div id="add-resource-form" style="display:none;margin-top:14px;padding:14px;background:var(--surface);border-radius:var(--r-lg);">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tipo</label>
+              <select class="form-input" id="nr-type">
+                <option value="pdf">📄 PDF</option>
+                <option value="video">▶ Video YouTube</option>
+                <option value="genially">✨ Genially / Presentación</option>
+                <option value="link">🔗 Enlace externo</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Título del recurso</label><input class="form-input" id="nr-title" placeholder="Ej: Guía de lectura"></div>
+          </div>
+          <div class="form-group"><label class="form-label">URL del recurso</label><input class="form-input" id="nr-url" placeholder="https://..."></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="saveResource()">Agregar</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('add-resource-form').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB ACTIVITIES -->
+      <div id="tab-activities" class="tab-pane">
+        <div id="activities-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addActivity()">+ Agregar actividad</button>
+        <div id="add-activity-form" style="display:none;margin-top:14px;padding:14px;background:var(--surface);border-radius:var(--r-lg);">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Tipo</label>
+              <select class="form-input" id="na-type">
+                <option value="assignment">📝 Tarea / Entrega</option>
+                <option value="forum">💬 Foro</option>
+                <option value="reflection">💭 Reflexión</option>
+                <option value="survey">📋 Encuesta</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Título</label><input class="form-input" id="na-title"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Instrucciones para el estudiante</label><textarea class="form-textarea" id="na-instructions" rows="3" placeholder="Describe claramente qué debe hacer el estudiante, el formato esperado, extensión, etc."></textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Puntaje máximo</label><input class="form-input" type="number" id="na-score" value="100"></div>
+            <div class="form-group"><label class="form-label">Fecha límite (opcional)</label><input class="form-input" type="date" id="na-due"></div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <label class="toggle"><input type="checkbox" id="na-required" checked><span class="toggle-track"></span></label>
+              <span class="form-label" style="margin:0;">Actividad requerida</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <label class="toggle"><input type="checkbox" id="na-rubric-toggle" onchange="toggleRubricForm()"><span class="toggle-track"></span></label>
+              <span class="form-label" style="margin:0;">Incluir rúbrica de evaluación</span>
+            </label>
+          </div>
+          <div id="rubric-form" style="display:none;padding:14px;background:white;border:1px solid var(--border);border-radius:var(--r);margin-top:10px;">
+            <div class="form-group"><label class="form-label">Título de la rúbrica</label><input class="form-input" id="rub-title" placeholder="Ej: Rúbrica — Secuencia Didáctica"></div>
+            <div id="criteria-list"></div>
+            <button class="btn btn-ghost btn-xs" onclick="addCriterion()">+ Agregar criterio</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-primary btn-sm" onclick="saveActivity()">Agregar actividad</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('add-activity-form').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB SESSION -->
+      <div id="tab-session" class="tab-pane">
+        <div class="form-group"><label class="form-label">Título de la sesión</label><input class="form-input" id="ss-title"></div>
+        <div class="form-group"><label class="form-label">Fecha y hora (texto libre)</label><input class="form-input" id="ss-date" placeholder="Ej: Martes 6 de mayo, 18:30 hrs"></div>
+        <div class="form-group"><label class="form-label">URL de Zoom</label><input class="form-input" id="ss-zoom" placeholder="https://zoom.us/j/..."></div>
+        <div class="form-group"><label class="form-label">URL de grabación YouTube (post sesión)</label><input class="form-input" id="ss-rec" placeholder="https://www.youtube.com/embed/..."></div>
+        <div class="form-group"><label class="form-label">Descripción (opcional)</label><textarea class="form-textarea" id="ss-desc" rows="2" placeholder="Qué se verá en esta sesión..."></textarea></div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="saveModule()">Guardar módulo</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "teacher") window.location.href = "../../index.html";
+  buildTeacherSidebar("mycourses");
+  buildTopbar("Mis Cursos", ["Docente","Mis Cursos"]);
+  initModals();
+
+  const myCourses = NexusDB.courses.filter(c => c.teacherId === me.id);
+  const cont = document.getElementById("courses-container");
+
+  if (!myCourses.length) {
+    cont.innerHTML = `<div class="empty-state"><div class="icon">⊞</div><h3>Sin cursos asignados</h3><p>El administrador debe asignarte como docente de un curso.</p></div>`;
+  }
+
+  myCourses.forEach(course => {
+    const section = document.createElement("div");
+    section.style.marginBottom = "32px";
+    section.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+        <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(${course.coverGradient||'135deg,var(--dk),var(--dk2)'})"></div>
+        <div style="flex:1;">
+          <h2 style="font-size:1.1rem;margin-bottom:2px;">${course.title}</h2>
+          <div style="font-size:13px;color:var(--dk3);">${course.enrolledCount} estudiantes · ${course.duration} · ${statusBadge(course.status)}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="addModule('${course.id}')">+ Módulo</button>
+      </div>
+      <div id="modules-${course.id}"></div>`;
+    cont.appendChild(section);
+    renderModules(course);
+  });
+
+  function renderModules(course) {
+    const container = document.getElementById("modules-" + course.id);
+    container.innerHTML = "";
+    if (!course.modules.length) {
+      container.innerHTML = `<div class="alert alert-info">Este curso no tiene módulos aún. Haz clic en "+ Módulo" para agregar el primero.</div>`;
+      return;
+    }
+    course.modules.forEach(mod => {
+      const row = document.createElement("div");
+      row.className = "module-editor-row";
+      row.innerHTML = `
+        <div class="mod-num">${mod.order}</div>
+        <div class="mod-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <strong style="font-size:14px;">${mod.title}</strong>
+            ${statusBadge(mod.status)}
+          </div>
+          <div style="font-size:12.5px;color:var(--dk3);margin-bottom:6px;">${mod.description||""}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dk4);">
+            <span>📎 ${mod.resources.length} recursos</span>
+            <span>📝 ${mod.activities.length} actividades</span>
+            ${mod.syncSession?.zoomUrl?'<span>📡 Sesión Zoom</span>':""}
+            ${mod.unlockAfter?`<span>🔒 Req. Módulo ${mod.unlockAfter}</span>`:""}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-primary btn-xs" onclick="editModule('${course.id}',${mod.id})">✏ Editar</button>
+          <button class="btn btn-ghost btn-xs" onclick="moveModule('${course.id}',${mod.id},-1)">↑</button>
+          <button class="btn btn-ghost btn-xs" onclick="moveModule('${course.id}',${mod.id},1)">↓</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteModule('${course.id}',${mod.id})">🗑</button>
+        </div>`;
+      container.appendChild(row);
+    });
+  }
+
+  let editingCourseId = null, editingModuleId = null;
+
+  function addModule(courseId) {
+    editingCourseId = courseId;
+    const course = NexusDB.getCourse(courseId);
+    editingModuleId = Date.now();
+    const newMod = {
+      id: editingModuleId, order: course.modules.length + 1,
+      title: "Nuevo módulo", description: "",
+      status: "draft", unlockAfter: null,
+      resources: [], activities: [],
+      syncSession: { title:"", date:"", zoomUrl:"", recordingUrl:"", description:"" }
+    };
+    course.modules.push(newMod);
+    loadModuleToModal(newMod);
+    openModal("modal-module");
+    renderModules(course);
+  }
+
+  function editModule(courseId, moduleId) {
+    editingCourseId = courseId;
+    editingModuleId = moduleId;
+    const course = NexusDB.getCourse(courseId);
+    const mod = course.modules.find(m=>m.id===moduleId);
+    loadModuleToModal(mod);
+    openModal("modal-module");
+  }
+
+  function loadModuleToModal(mod) {
+    document.getElementById("mod-modal-title").textContent = `Editar: ${mod.title}`;
+    document.getElementById("m-title").value    = mod.title;
+    document.getElementById("m-desc").value     = mod.description||"";
+    document.getElementById("m-status").value   = mod.status;
+    document.getElementById("m-unlock").value   = mod.unlockAfter||"";
+    document.getElementById("ss-title").value   = mod.syncSession?.title||"";
+    document.getElementById("ss-date").value    = mod.syncSession?.date||"";
+    document.getElementById("ss-zoom").value    = mod.syncSession?.zoomUrl||"";
+    document.getElementById("ss-rec").value     = mod.syncSession?.recordingUrl||"";
+    document.getElementById("ss-desc").value    = mod.syncSession?.description||"";
+    renderResourcesList(mod); renderActivitiesList(mod);
+    initTabs(".tabs");
+  }
+
+  function renderResourcesList(mod) {
+    const rl = document.getElementById("resources-list");
+    rl.innerHTML = "";
+    mod.resources.forEach((r,i) => {
+      rl.innerHTML += `<div class="resource-mini"><span>${typeIcon(r.type)}</span><span style="flex:1;">${r.title}</span>
+        <button class="btn btn-ghost btn-xs" onclick="removeResource(${i})">✕</button></div>`;
+    });
+  }
+
+  function renderActivitiesList(mod) {
+    const al = document.getElementById("activities-list");
+    al.innerHTML = "";
+    mod.activities.forEach((a,i) => {
+      al.innerHTML += `<div class="activity-mini"><span>${typeIcon(a.type)}</span>
+        <span class="name">${a.title}</span>
+        ${a.rubric?'<span class="badge badge-acc" style="font-size:10px;">Rúbrica</span>':""}
+        ${a.required?'<span class="badge badge-primary" style="font-size:10px;">Req.</span>':""}
+        <button class="btn btn-ghost btn-xs" onclick="removeActivity(${i})">✕</button></div>`;
+    });
+  }
+
+  function getCurrentMod() {
+    const course = NexusDB.getCourse(editingCourseId);
+    return course?.modules.find(m=>m.id===editingModuleId);
+  }
+
+  function addResource() { document.getElementById("add-resource-form").style.display="block"; }
+  function saveResource() {
+    const mod = getCurrentMod(); if (!mod) return;
+    const r = { id:"res-"+Date.now(), type:document.getElementById("nr-type").value,
+      title:document.getElementById("nr-title").value, url:document.getElementById("nr-url").value };
+    if (!r.title||!r.url) { alert("Completa título y URL"); return; }
+    mod.resources.push(r);
+    document.getElementById("add-resource-form").style.display="none";
+    renderResourcesList(mod);
+  }
+  function removeResource(i) { const m=getCurrentMod(); m.resources.splice(i,1); renderResourcesList(m); }
+
+  function addActivity() { document.getElementById("add-activity-form").style.display="block"; }
+  function toggleRubricForm() {
+    const show = document.getElementById("na-rubric-toggle").checked;
+    document.getElementById("rubric-form").style.display = show?"block":"none";
+    if (show && !document.getElementById("criteria-list").children.length) addCriterion();
+  }
+
+  let criteriaData = [];
+  function addCriterion() {
+    const idx = criteriaData.length;
+    criteriaData.push({ name:"", levels:["Insuficiente","En desarrollo","Logrado","Destacado"], weights:[0,1,2,3] });
+    const cl = document.getElementById("criteria-list");
+    const div = document.createElement("div");
+    div.style.cssText="padding:10px;background:var(--surface);border-radius:8px;margin-bottom:8px;";
+    div.innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <input class="form-input" placeholder="Nombre del criterio" oninput="criteriaData[${idx}].name=this.value" style="flex:1;">
+        <button class="btn btn-ghost btn-xs" onclick="this.closest('div[style]').remove();criteriaData.splice(${idx},1)">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--dk3);">Niveles: Insuficiente (0) · En desarrollo (1) · Logrado (2) · Destacado (3) <span style="color:var(--p);">Puedes ajustar en futuras versiones</span></div>`;
+    cl.appendChild(div);
+  }
+
+  function saveActivity() {
+    const mod = getCurrentMod(); if (!mod) return;
+    const title = document.getElementById("na-title").value.trim();
+    const instr = document.getElementById("na-instructions").value.trim();
+    if (!title||!instr) { alert("Completa título e instrucciones"); return; }
+    const useRubric = document.getElementById("na-rubric-toggle").checked;
+    let rubric = null;
+    if (useRubric && criteriaData.length) {
+      rubric = { title: document.getElementById("rub-title").value||"Rúbrica de evaluación",
+        criteria: criteriaData.filter(c=>c.name).map(c=>({...c})) };
+    }
+    const act = {
+      id:"act-"+Date.now(), type:document.getElementById("na-type").value,
+      title, instructions:instr,
+      required: document.getElementById("na-required").checked,
+      dueDate: document.getElementById("na-due").value||null,
+      maxScore: parseInt(document.getElementById("na-score").value)||100,
+      rubric
+    };
+    mod.activities.push(act);
+    document.getElementById("add-activity-form").style.display="none";
+    criteriaData = [];
+    document.getElementById("criteria-list").innerHTML="";
+    document.getElementById("na-rubric-toggle").checked=false;
+    document.getElementById("rubric-form").style.display="none";
+    renderActivitiesList(mod);
+  }
+  function removeActivity(i) { const m=getCurrentMod(); m.activities.splice(i,1); renderActivitiesList(m); }
+
+  function saveModule() {
+    const mod = getCurrentMod(); if (!mod) return;
+    mod.title       = document.getElementById("m-title").value||mod.title;
+    mod.description = document.getElementById("m-desc").value;
+    mod.status      = document.getElementById("m-status").value;
+    mod.unlockAfter = parseInt(document.getElementById("m-unlock").value)||null;
+    mod.syncSession = {
+      title:       document.getElementById("ss-title").value,
+      date:        document.getElementById("ss-date").value,
+      zoomUrl:     document.getElementById("ss-zoom").value,
+      recordingUrl:document.getElementById("ss-rec").value,
+      description: document.getElementById("ss-desc").value
+    };
+    closeModal("modal-module");
+    renderModules(NexusDB.getCourse(editingCourseId));
+  }
+
+  function deleteModule(courseId, moduleId) {
+    if (!confirm("¿Eliminar este módulo? Se perderán todos sus recursos y actividades.")) return;
+    const course = NexusDB.getCourse(courseId);
+    const idx = course.modules.findIndex(m=>m.id===moduleId);
+    if (idx>-1) { course.modules.splice(idx,1); course.modules.forEach((m,i)=>m.order=i+1); }
+    renderModules(course);
+  }
+
+  function moveModule(courseId, moduleId, dir) {
+    const course = NexusDB.getCourse(courseId);
+    const idx = course.modules.findIndex(m=>m.id===moduleId);
+    const newIdx = idx + dir;
+    if (newIdx<0||newIdx>=course.modules.length) return;
+    [course.modules[idx], course.modules[newIdx]] = [course.modules[newIdx], course.modules[idx]];
+    course.modules.forEach((m,i)=>m.order=i+1);
+    renderModules(course);
+  }
+</script>
+</body>
+</html>

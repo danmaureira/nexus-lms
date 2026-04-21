@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Docente — Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div><h1 id="welcome-msg">Buen día —</h1><p>Panel de gestión docente</p></div>
+        <a class="btn btn-primary" href="submissions.html">Ver entregas pendientes</a>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="st-courses">0</div><div class="lbl">Mis cursos</div></div>
+        <div class="stat-card accent"><div class="num" id="st-students">0</div><div class="lbl">Estudiantes</div></div>
+        <div class="stat-card dark"><div class="num" id="st-pending">0</div><div class="lbl">Entregas por revisar</div></div>
+        <div class="stat-card success"><div class="num" id="st-graded">0</div><div class="lbl">Calificadas</div></div>
+      </div>
+
+      <div class="grid-2" style="gap:20px;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3>Mis cursos</h3>
+            <a href="mycourses.html" class="btn btn-ghost btn-xs">Ver todos →</a>
+          </div>
+          <div id="my-courses-list"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3>Entregas recientes</h3>
+            <a href="submissions.html" class="btn btn-ghost btn-xs">Gestionar →</a>
+          </div>
+          <div id="recent-subs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "teacher") window.location.href = "../../index.html";
+  buildTeacherSidebar("dashboard");
+  buildTopbar("Dashboard Docente");
+
+  const hr = new Date().getHours();
+  document.getElementById("welcome-msg").textContent = `${hr<12?"Buenos días":hr<19?"Buenas tardes":"Buenas noches"}, ${me.name.split(" ")[0]} 👋`;
+
+  const myCourses = NexusDB.courses.filter(c => c.teacherId === me.id);
+  const mySubs    = NexusDB.submissions.filter(s => NexusDB.getCourse(s.courseId)?.teacherId === me.id);
+  const myStudents = new Set(myCourses.flatMap(c => NexusDB.getCourseStudents(c.id).map(u=>u.id)));
+
+  document.getElementById("st-courses").textContent  = myCourses.length;
+  document.getElementById("st-students").textContent = myStudents.size;
+  document.getElementById("st-pending").textContent  = mySubs.filter(s=>s.status==="submitted").length;
+  document.getElementById("st-graded").textContent   = mySubs.filter(s=>s.status==="graded").length;
+
+  const cl = document.getElementById("my-courses-list");
+  myCourses.forEach(c => {
+    const pct = Math.round((c.enrolledCount/c.maxStudents)*100);
+    cl.innerHTML += `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(${c.coverGradient||'135deg,var(--dk),var(--dk2)'})" ></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.title}</div>
+          <div style="font-size:12px;color:var(--dk3);">${c.enrolledCount} estudiantes · ${c.modules.length} módulos</div>
+        </div>
+        ${statusBadge(c.status)}
+      </div>`;
+  });
+  if (!myCourses.length) cl.innerHTML = `<p class="text-muted text-sm">Sin cursos asignados.</p>`;
+
+  const rs = document.getElementById("recent-subs");
+  mySubs.slice(0,5).forEach(s => {
+    rs.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:18px;">${typeIcon(s.type)}</span>
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:600;">${s.userName}</div>
+          <div style="font-size:12px;color:var(--dk3);">${timeAgo(s.submittedAt)}</div>
+        </div>
+        ${statusBadge(s.status)}
+      </div>`;
+  });
+  if (!mySubs.length) rs.innerHTML = `<p class="text-muted text-sm">Sin entregas aún.</p>`;
+</script>
+</body>
+</html>

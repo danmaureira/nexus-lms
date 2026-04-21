@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personalización — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .preview-sidebar { width: 200px; background: var(--dk); border-radius: var(--r-lg); padding: 14px; }
+    .preview-sidebar .p-logo { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: white; margin-bottom: 16px; }
+    .preview-sidebar .p-item { padding: 8px 10px; border-radius: 7px; font-size: 12px; color: rgba(255,255,255,.6); margin-bottom: 2px; }
+    .preview-sidebar .p-item.active { background: var(--p); color: white; }
+    .color-picker-row { display: flex; align-items: center; gap: 12px; }
+    .color-picker-row input[type=color] { width: 48px; height: 40px; border: 1.5px solid var(--border2); border-radius: 8px; cursor: pointer; padding: 2px; }
+    .logo-upload { border: 2px dashed var(--border2); border-radius: var(--r-lg); padding: 32px; text-align: center; cursor: pointer; transition: all .18s; }
+    .logo-upload:hover { border-color: var(--p); background: var(--p-mist); }
+    .preview-login { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+    .preview-login-top { padding: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header">
+        <h1>Personalización institucional</h1>
+        <p>Configura la identidad visual y los datos institucionales de la plataforma.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+
+        <!-- IZQUIERDA: FORMULARIO -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+
+          <!-- IDENTIDAD -->
+          <div class="card">
+            <h3 style="margin-bottom:16px;">Identidad de la plataforma</h3>
+            <div class="form-group">
+              <label class="form-label">Nombre de la plataforma</label>
+              <input class="form-input" id="b-pname" value="Nexus LMS" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nombre de la institución</label>
+              <input class="form-input" id="b-inst" value="Instituto Ejemplo" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Símbolo del logo (2-3 letras)</label>
+              <input class="form-input" id="b-logotext" value="NX" maxlength="3" style="max-width:100px;" oninput="updatePreview()">
+              <span class="form-hint">Se usa cuando no hay imagen de logo</span>
+            </div>
+          </div>
+
+          <!-- LOGO -->
+          <div class="card">
+            <h3 style="margin-bottom:16px;">Logo institucional</h3>
+            <div class="logo-upload" onclick="document.getElementById('logo-file').click()">
+              <div id="logo-preview-wrap">
+                <div style="font-size:32px;margin-bottom:8px;">🖼</div>
+                <p style="font-size:14px;font-weight:600;color:var(--dk);">Subir logo</p>
+                <p style="font-size:12px;color:var(--dk4);margin-top:4px;">PNG, SVG o WebP · Fondo transparente recomendado · Máx. 2 MB</p>
+              </div>
+            </div>
+            <input type="file" id="logo-file" accept=".png,.svg,.webp,.jpg" style="display:none;" onchange="previewLogo(this)">
+            <div id="logo-img-preview" style="display:none;margin-top:12px;text-align:center;">
+              <img id="logo-img" style="max-height:64px;border-radius:8px;">
+              <button class="btn btn-ghost btn-xs" style="margin-left:10px;" onclick="clearLogo()">Quitar</button>
+            </div>
+          </div>
+
+          <!-- COLORES -->
+          <div class="card">
+            <h3 style="margin-bottom:16px;">Colores institucionales</h3>
+            <div class="form-group">
+              <label class="form-label">Color primario</label>
+              <div class="color-picker-row">
+                <input type="color" id="c-primary" value="#00a499" oninput="syncColor(this,'c-primary-hex');updatePreview()">
+                <input class="form-input" id="c-primary-hex" value="#00a499" style="max-width:120px;" oninput="syncHex(this,'c-primary')">
+                <div id="c-primary-preview" style="width:40px;height:40px;border-radius:8px;background:#00a499;border:1px solid var(--border);"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Color de acento</label>
+              <div class="color-picker-row">
+                <input type="color" id="c-accent" value="#EA7600" oninput="syncColor(this,'c-accent-hex');updatePreview()">
+                <input class="form-input" id="c-accent-hex" value="#EA7600" style="max-width:120px;" oninput="syncHex(this,'c-accent')">
+                <div id="c-accent-preview" style="width:40px;height:40px;border-radius:8px;background:#EA7600;border:1px solid var(--border);"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Color oscuro (sidebar)</label>
+              <div class="color-picker-row">
+                <input type="color" id="c-dark" value="#394049" oninput="syncColor(this,'c-dark-hex');updatePreview()">
+                <input class="form-input" id="c-dark-hex" value="#394049" style="max-width:120px;" oninput="syncHex(this,'c-dark')">
+                <div id="c-dark-preview" style="width:40px;height:40px;border-radius:8px;background:#394049;border:1px solid var(--border);"></div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-lg" onclick="saveBranding()">Guardar configuración</button>
+          <div id="save-ok" class="alert alert-success hidden">✅ Configuración guardada correctamente.</div>
+        </div>
+
+        <!-- DERECHA: PREVIEW -->
+        <div style="position:sticky;top:78px;display:flex;flex-direction:column;gap:16px;">
+          <div class="card">
+            <h3 style="margin-bottom:14px;">Vista previa — Sidebar</h3>
+            <div class="preview-sidebar" id="prev-sidebar">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <div class="p-logo" id="prev-logomark" style="background:var(--p);">NX</div>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:white;" id="prev-pname">Nexus LMS</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,.4);" id="prev-inst">Instituto Ejemplo</div>
+                </div>
+              </div>
+              <div class="p-item active">◈ Dashboard</div>
+              <div class="p-item">⊞ Cursos</div>
+              <div class="p-item">◉ Usuarios</div>
+              <div class="p-item">▦ Reportes</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:14px;">Vista previa — Botones</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <button id="prev-btn-primary" class="btn" style="background:var(--p);color:white;width:100%;justify-content:center;">Botón primario</button>
+              <button id="prev-btn-accent"  class="btn" style="background:var(--acc);color:white;width:100%;justify-content:center;">Botón de acento</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:14px;">CSS personalizado</h3>
+            <textarea class="form-textarea" id="custom-css" rows="5" placeholder="/* Variables CSS personalizadas */
+:root {
+  --p: #00a499;
+  --acc: #EA7600;
+}"></textarea>
+            <span class="form-hint">Se aplica globalmente a toda la plataforma</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("branding");
+  buildTopbar("Personalización", ["Admin", "Personalización"]);
+
+  function syncColor(picker, hexId) {
+    document.getElementById(hexId).value = picker.value;
+    const previewId = hexId.replace("-hex","-preview");
+    const prev = document.getElementById(previewId);
+    if (prev) prev.style.background = picker.value;
+  }
+  function syncHex(input, colorId) {
+    const v = input.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      document.getElementById(colorId).value = v;
+      const prev = document.getElementById(colorId + "-preview");
+      if (prev) prev.style.background = v;
+      updatePreview();
+    }
+  }
+
+  function updatePreview() {
+    const pname  = document.getElementById("b-pname").value;
+    const inst   = document.getElementById("b-inst").value;
+    const lt     = document.getElementById("b-logotext").value;
+    const cp     = document.getElementById("c-primary").value;
+    const ca     = document.getElementById("c-accent").value;
+    const cd     = document.getElementById("c-dark").value;
+
+    document.getElementById("prev-pname").textContent    = pname;
+    document.getElementById("prev-inst").textContent     = inst;
+    document.getElementById("prev-logomark").textContent = lt;
+    document.getElementById("prev-logomark").style.background = cp;
+    document.getElementById("prev-sidebar").style.background  = cd;
+    document.getElementById("prev-btn-primary").style.background = cp;
+    document.getElementById("prev-btn-accent").style.background  = ca;
+    document.documentElement.style.setProperty("--p", cp);
+    document.documentElement.style.setProperty("--acc", ca);
+    document.documentElement.style.setProperty("--dk", cd);
+  }
+
+  function previewLogo(input) {
+    if (input.files?.[0]) {
+      const r = new FileReader();
+      r.onload = e => {
+        document.getElementById("logo-img").src = e.target.result;
+        document.getElementById("logo-img-preview").style.display = "flex";
+        document.getElementById("logo-img-preview").style.alignItems = "center";
+        document.getElementById("logo-img-preview").style.justifyContent = "center";
+        NexusDB.platform.logo = e.target.result;
+        updatePreview();
+      };
+      r.readAsDataURL(input.files[0]);
+    }
+  }
+  function clearLogo() {
+    NexusDB.platform.logo = "";
+    document.getElementById("logo-img-preview").style.display = "none";
+  }
+
+  function saveBranding() {
+    NexusDB.platform.name        = document.getElementById("b-pname").value;
+    NexusDB.platform.institution = document.getElementById("b-inst").value;
+    NexusDB.platform.logoText    = document.getElementById("b-logotext").value;
+    NexusDB.platform.colors = {
+      primary: document.getElementById("c-primary").value,
+      accent:  document.getElementById("c-accent").value,
+      dark:    document.getElementById("c-dark").value
+    };
+    const ok = document.getElementById("save-ok");
+    ok.classList.remove("hidden");
+    setTimeout(() => ok.classList.add("hidden"), 3000);
+  }
+</script>
+</body>
+</html>

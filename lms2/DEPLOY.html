@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía de Despliegue — Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/nexus.css">
+  <style>
+    body { background: var(--surface); padding: 40px 20px; }
+    .guide-wrap { max-width: 880px; margin: 0 auto; }
+    .guide-hero { background: linear-gradient(135deg, var(--dk) 0%, var(--dk2) 100%); border-radius: var(--r-xl); padding: 40px; color: white; text-align: center; margin-bottom: 32px; }
+    .guide-hero h1 { font-family: var(--font-d); color: white; font-size: 2rem; margin-bottom: 8px; }
+    .guide-hero p  { color: rgba(255,255,255,.65); font-size: 15px; }
+    .phase { margin-bottom: 36px; }
+    .phase-title { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .phase-num { width: 34px; height: 34px; border-radius: 50%; background: var(--p); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+    .phase-title h2 { font-size: 1.2rem; margin: 0; }
+    .step { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px 22px; margin-bottom: 10px; }
+    .step h3 { font-size: 14.5px; margin-bottom: 6px; }
+    .step p, .step li { font-size: 13.5px; color: var(--dk2); line-height: 1.7; }
+    .step ol, .step ul { padding-left: 18px; margin-top: 8px; }
+    .code { background: var(--dk); color: #7ee787; font-family: monospace; font-size: 12.5px; padding: 14px 16px; border-radius: 8px; margin: 10px 0; overflow-x: auto; white-space: pre; line-height: 1.6; }
+    .option-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+    .option-box { border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: 16px; }
+    .option-box.recommended { border-color: var(--p); background: var(--p-mist); }
+    .option-box h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 4px; }
+    .option-box p  { font-size: 12.5px; color: var(--dk3); }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .tag-rec  { background: var(--p-light);  color: var(--p-dark); }
+    .tag-paid { background: var(--acc-light); color: var(--acc-dim); }
+    .tag-free { background: var(--success-bg); color: var(--success); }
+    .tag-inst { background: #e8eaf6; color: #3949ab; }
+    .callout { border-left: 4px solid var(--p); background: var(--p-mist); border-radius: 0 var(--r) var(--r) 0; padding: 12px 16px; margin: 12px 0; font-size: 13.5px; color: var(--dk2); }
+    .callout.warn { border-color: var(--acc); background: var(--acc-light); }
+    .callout.success { border-color: var(--success); background: var(--success-bg); }
+    a.ext { color: var(--p); font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="guide-wrap">
+
+  <div class="guide-hero anim-fadeup">
+    <div style="font-size:40px;margin-bottom:12px;">🚀</div>
+    <h1>Guía de Despliegue en Producción</h1>
+    <p>Nexus LMS · Instructivo completo para alojar en servidor propio con dominio personalizado</p>
+  </div>
+
+  <!-- FASE 0: ARQUITECTURA -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">0</div><h2>Arquitectura del sistema</h2></div>
+    <div class="step">
+      <h3>¿Qué tipo de sistema es Nexus LMS?</h3>
+      <p>La versión actual es un <strong>frontend estático</strong> (HTML + CSS + JS puro). Funciona sin servidor de base de datos real — los datos viven en el navegador. Esto es perfecto para demos y pilotos.</p>
+      <div class="callout warn">⚠️ Para un despliegue de producción con 300+ usuarios reales, necesitarás una capa de backend con base de datos real. El instructivo cubre dos caminos: <strong>(A) versión estática mejorada</strong> con Firebase y <strong>(B) versión con servidor propio</strong>.</div>
+      <p style="margin-top:10px;"><strong>Stack recomendado para producción:</strong></p>
+      <ul>
+        <li><strong>Frontend:</strong> HTML/CSS/JS estático (este proyecto) o React</li>
+        <li><strong>Autenticación:</strong> Google OAuth 2.0 (Firebase Auth o Auth directa)</li>
+        <li><strong>Base de datos:</strong> Firebase Firestore (opción sin servidor) o PostgreSQL (servidor propio)</li>
+        <li><strong>Almacenamiento archivos:</strong> Firebase Storage o Amazon S3</li>
+        <li><strong>Hosting:</strong> Firebase Hosting, Vercel, VPS (Render, Railway, DigitalOcean)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FASE 1: OPCIÓN A — FIREBASE -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">A</div><h2>Opción A — Firebase (recomendado para equipos sin servidor propio)</h2></div>
+    <div class="step">
+      <h3>¿Por qué Firebase?</h3>
+      <p>Firebase es una plataforma de Google que ofrece base de datos en tiempo real, autenticación con Google, almacenamiento de archivos y hosting — todo sin administrar servidores. El plan gratuito (Spark) soporta hasta ~50k lecturas/día.</p>
+      <div class="callout">✅ Tiempo estimado de configuración: 2-3 horas · Costo: Gratis para empezar, ~$25 USD/mes si supera cuotas gratuitas</div>
+    </div>
+    <div class="step">
+      <h3>Paso A.1 — Crear proyecto Firebase</h3>
+      <ol>
+        <li>Ve a <a class="ext" href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> e inicia sesión con Google</li>
+        <li>Clic en <strong>Agregar proyecto</strong> → Nombre: <code>nexus-lms-tu-institucion</code></li>
+        <li>Desactiva Google Analytics (opcional) → <strong>Crear proyecto</strong></li>
+      </ol>
+    </div>
+    <div class="step">
+      <h3>Paso A.2 — Habilitar Google Authentication</h3>
+      <ol>
+        <li>En la consola Firebase, ve a <strong>Authentication → Sign-in method</strong></li>
+        <li>Habilita <strong>Google</strong> como proveedor</li>
+        <li>Agrega tu dominio en <strong>Authorized domains</strong> (ej: <code>cursos.tuinstitucion.cl</code>)</li>
+        <li>Copia el <strong>Web client ID</strong> — lo necesitarás en el código</li>
+      </ol>
+      <div class="callout">El Web Client ID tiene el formato: <code>1234567890-abc.apps.googleusercontent.com</code><br>Reemplázalo en <code>js/core.js</code> en la variable <code>NexusDB.platform.googleClientId</code></div>
+    </div>
+    <div class="step">
+      <h3>Paso A.3 — Configurar Firestore (base de datos)</h3>
+      <ol>
+        <li>Ve a <strong>Firestore Database → Crear base de datos</strong></li>
+        <li>Selecciona <strong>Modo de producción</strong></li>
+        <li>Elige región: <strong>us-central1</strong> (o southamerica-east1 para menor latencia desde Chile)</li>
+        <li>En <strong>Reglas</strong>, establece:</li>
+      </ol>
+      <div class="code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    match /courses/{courseId} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'teacher'];
+    }
+    match /submissions/{subId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'teacher'];
+    }
+  }
+}</div>
+    </div>
+    <div class="step">
+      <h3>Paso A.4 — Desplegar en Firebase Hosting</h3>
+      <ol>
+        <li>Instala Firebase CLI: <code>npm install -g firebase-tools</code></li>
+        <li>Inicia sesión: <code>firebase login</code></li>
+        <li>En la carpeta del proyecto: <code>firebase init hosting</code></li>
+        <li>Selecciona tu proyecto → Directorio público: <code>.</code> (punto) → SPA: <strong>No</strong></li>
+        <li>Despliega: <code>firebase deploy</code></li>
+        <li>Tu sitio quedará en: <code>nexus-lms-xxxx.web.app</code></li>
+      </ol>
+      <div class="code"># Instalar y desplegar (terminal)
+npm install -g firebase-tools
+firebase login
+firebase init hosting
+firebase deploy
+
+# Para redespliegues posteriores:
+firebase deploy --only hosting</div>
+    </div>
+  </div>
+
+  <!-- FASE 1: OPCIÓN B — VPS -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">B</div><h2>Opción B — VPS con servidor propio (máximo control)</h2></div>
+    <div class="step">
+      <h3>¿Qué es un VPS?</h3>
+      <p>Un VPS (Virtual Private Server) es un servidor virtual dedicado. Tienes control total: puedes instalar cualquier software, gestionar base de datos propia y escalar cuando quieras. Es la opción más robusta.</p>
+      <div class="option-row">
+        <div class="option-box recommended"><div class="tag tag-rec">Recomendado</div><h4>🟢 Render.com</h4><p>Gratis para proyectos pequeños, sencillo de configurar. Deploy automático desde GitHub. Buen soporte para Node.js / PostgreSQL.</p><a class="ext" href="https://render.com" target="_blank" style="font-size:12px;">render.com →</a></div>
+        <div class="option-box"><div class="tag tag-paid">~$6 USD/mes</div><h4>🔷 DigitalOcean Droplet</h4><p>VPS Linux desde $6/mes. Control total. Ideal si tienes equipo TI. Requiere conocimiento de Linux.</p><a class="ext" href="https://digitalocean.com" target="_blank" style="font-size:12px;">digitalocean.com →</a></div>
+        <div class="option-box"><div class="tag tag-paid">~$5 USD/mes</div><h4>🟡 Railway.app</h4><p>Muy fácil de usar. Soporta Node.js + PostgreSQL. Deploy en 5 minutos desde GitHub.</p><a class="ext" href="https://railway.app" target="_blank" style="font-size:12px;">railway.app →</a></div>
+        <div class="option-box"><div class="tag tag-inst">Institucional</div><h4>🏫 Servidor institucional</h4><p>Si tu institución tiene servidor web con Apache/Nginx, sube los archivos por FTP/SFTP. Consulta con TI.</p></div>
+      </div>
+    </div>
+    <div class="step">
+      <h3>Paso B.1 — Subir los archivos (versión estática sin backend)</h3>
+      <p>Para la versión estática (demo/piloto), cualquier hosting de archivos estáticos funciona:</p>
+      <ol>
+        <li>Comprime la carpeta <code>lms2/</code> en un ZIP</li>
+        <li>Sube los archivos por <strong>FTP/SFTP</strong> al directorio público del servidor (ej: <code>/var/www/html/lms/</code> en Apache, o <code>/usr/share/nginx/html/lms/</code> en Nginx)</li>
+        <li>El sitio estará accesible en <code>http://tu-servidor/lms/</code></li>
+      </ol>
+    </div>
+    <div class="step">
+      <h3>Paso B.2 — Configurar Nginx (servidor web)</h3>
+      <div class="code"># Instalar Nginx en Ubuntu/Debian
+sudo apt update && sudo apt install -y nginx
+
+# Crear configuración del sitio
+sudo nano /etc/nginx/sites-available/nexus-lms
+
+# Pegar esta configuración:
+server {
+    listen 80;
+    server_name cursos.tuinstitucion.cl www.cursos.tuinstitucion.cl;
+    root /var/www/nexus-lms;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Comprimir archivos para mejor rendimiento
+    gzip on;
+    gzip_types text/css application/javascript text/html;
+}
+
+# Activar configuración
+sudo ln -s /etc/nginx/sites-available/nexus-lms /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx</div>
+    </div>
+  </div>
+
+  <!-- FASE 2: DOMINIO PERSONALIZADO -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">2</div><h2>Configurar dominio personalizado</h2></div>
+    <div class="step">
+      <h3>Paso 2.1 — Apuntar el dominio al servidor</h3>
+      <p>En el panel de gestión de tu dominio (NIC Chile, GoDaddy, Namecheap, etc.), crea un registro DNS:</p>
+      <div class="code">Tipo:  A
+Host:  cursos  (o @  para dominio raíz)
+Valor: [IP de tu servidor o IP de Firebase/Vercel]
+TTL:   3600
+
+# O si usas Firebase/Vercel/Netlify, usa CNAME:
+Tipo:  CNAME
+Host:  cursos
+Valor: tu-proyecto.web.app  (Firebase)
+       cname.vercel-dns.com  (Vercel)
+TTL:   3600</div>
+      <p style="margin-top:8px;">Los cambios DNS pueden tardar <strong>15 minutos a 48 horas</strong> en propagarse globalmente.</p>
+    </div>
+    <div class="step">
+      <h3>Paso 2.2 — Habilitar HTTPS (SSL gratuito)</h3>
+      <p>HTTPS es <strong>obligatorio</strong> para que Google OAuth funcione. Usa Let's Encrypt (gratis):</p>
+      <div class="code"># Instalar Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Obtener certificado SSL automáticamente
+sudo certbot --nginx -d cursos.tuinstitucion.cl -d www.cursos.tuinstitucion.cl
+
+# El certificado se renueva automáticamente cada 90 días
+# Para verificar renovación automática:
+sudo systemctl status certbot.timer</div>
+      <div class="callout success">✅ Después de esto, tu plataforma estará en: <strong>https://cursos.tuinstitucion.cl</strong> con candado verde.</div>
+    </div>
+    <div class="step">
+      <h3>Paso 2.3 — Agregar dominio a Google OAuth</h3>
+      <ol>
+        <li>Ve a <a class="ext" href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></li>
+        <li>Selecciona tu proyecto → <strong>APIs y servicios → Credenciales</strong></li>
+        <li>Edita tu credencial OAuth 2.0</li>
+        <li>En <strong>Orígenes de JavaScript autorizados</strong>, agrega: <code>https://cursos.tuinstitucion.cl</code></li>
+        <li>En <strong>URIs de redireccionamiento autorizados</strong>, agrega: <code>https://cursos.tuinstitucion.cl/oauth-callback</code></li>
+        <li>Guarda los cambios (tardan ~5 minutos en aplicarse)</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- FASE 3: GOOGLE AUTH REAL -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">3</div><h2>Activar Google Sign-In real (producción)</h2></div>
+    <div class="step">
+      <h3>Paso 3.1 — Crear credenciales OAuth en Google Cloud</h3>
+      <ol>
+        <li>Ve a <a class="ext" href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></li>
+        <li>Crea un proyecto nuevo o selecciona el existente</li>
+        <li>Ve a <strong>APIs y servicios → Pantalla de consentimiento OAuth</strong> → Configura la pantalla con nombre de tu institución</li>
+        <li>Ve a <strong>Credenciales → Crear credenciales → ID de cliente OAuth 2.0</strong></li>
+        <li>Tipo: <strong>Aplicación web</strong></li>
+        <li>Copia el <strong>Client ID</strong> generado</li>
+      </ol>
+    </div>
+    <div class="step">
+      <h3>Paso 3.2 — Reemplazar mock por Google Sign-In real</h3>
+      <p>En <code>index.html</code>, reemplaza el botón de Google con el SDK oficial:</p>
+      <div class="code">&lt;!-- Agregar en &lt;head&gt; --&gt;
+&lt;script src="https://accounts.google.com/gsi/client" async defer&gt;&lt;/script&gt;
+
+&lt;!-- Reemplazar el botón manual con: --&gt;
+&lt;div id="g_id_onload"
+  data-client_id="TU_CLIENT_ID.apps.googleusercontent.com"
+  data-callback="handleGoogleLogin"
+  data-auto_prompt="false"&gt;
+&lt;/div&gt;
+&lt;div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+function handleGoogleLogin(response) {
+  // Decodificar JWT de Google
+  const payload = JSON.parse(atob(response.credential.split('.')[1]));
+  const { email, name, picture, sub } = payload;
+
+  // Buscar usuario en tu DB o crear nuevo
+  let user = NexusDB.getUserByEmail(email);
+  if (!user) {
+    user = { id: "u"+Date.now(), googleId: sub, name, email, avatar: picture,
+             role: "student", enrolledCourses: [], progress: {}, createdAt: new Date().toISOString().split("T")[0] };
+    NexusDB.users.push(user);
+  } else {
+    user.avatar = picture; // actualizar foto
+  }
+  saveSession(user);
+  redirectByRole(user);
+}
+&lt;/script&gt;</div>
+    </div>
+  </div>
+
+  <!-- FASE 4: PERSISTENCIA -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">4</div><h2>Persistencia de datos (para producción real)</h2></div>
+    <div class="step">
+      <h3>Solución A: Firebase Firestore (recomendado, sin servidor)</h3>
+      <p>Reemplaza <code>NexusDB</code> con llamadas a Firestore:</p>
+      <div class="code">// Agregar SDK de Firebase en &lt;head&gt;
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js';
+import { getFirestore, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
+
+const app = initializeApp({ apiKey: "...", authDomain: "...", projectId: "..." });
+const db  = getFirestore(app);
+
+// Cargar cursos
+const coursesSnap = await getDocs(collection(db, "courses"));
+const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+// Guardar entrega
+await addDoc(collection(db, "submissions"), { ...submissionData });</div>
+    </div>
+    <div class="step">
+      <h3>Solución B: API REST con Node.js + PostgreSQL</h3>
+      <p>Para máxima escalabilidad, implementa un backend con Express:</p>
+      <div class="code"># Estructura del backend
+backend/
+├── server.js          # Express server
+├── routes/
+│   ├── auth.js        # Google OAuth callback
+│   ├── courses.js     # CRUD cursos
+│   ├── users.js       # Gestión usuarios
+│   └── submissions.js # Entregas y calificaciones
+├── models/            # Sequelize ORM (PostgreSQL)
+└── .env               # Variables de entorno
+
+# Variables de entorno requeridas
+DATABASE_URL=postgresql://user:pass@host:5432/nexus_lms
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+SESSION_SECRET=...
+CORS_ORIGIN=https://cursos.tuinstitucion.cl</div>
+    </div>
+  </div>
+
+  <!-- FASE 5: CHECKLIST -->
+  <div class="phase">
+    <div class="phase-title"><div class="phase-num">✓</div><h2>Checklist de lanzamiento</h2></div>
+    <div class="step">
+      <h3>Antes de compartir la URL con tus usuarios:</h3>
+      <ul style="list-style:none;padding:0;">
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Dominio configurado</strong> con HTTPS activo (candado verde en navegador)</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Google OAuth funciona</strong> — haz login con tu cuenta Google en el sitio real</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Branding configurado</strong> — logo, nombre institución y colores aplicados</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Cursos creados</strong> con módulos y recursos publicados</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Usuarios importados</strong> y asignados a cursos</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>URLs de Zoom</strong> cargadas en sesiones sincrónicas</li>
+        <li style="padding:6px 0;border-bottom:1px solid var(--border);">☐ <strong>Prueba de entrega</strong> — entra como estudiante demo y envía una actividad</li>
+        <li style="padding:6px 0;">☐ <strong>Prueba de calificación</strong> — entra como admin/docente y califica la entrega anterior</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;margin-top:8px;background:linear-gradient(135deg,var(--p),var(--p-dark));">
+    <div style="font-size:2rem;margin-bottom:8px;">🎉</div>
+    <h2 style="color:white;margin-bottom:8px;">¡Plataforma lista!</h2>
+    <p style="color:rgba(255,255,255,.75);margin-bottom:16px;max-width:500px;margin-left:auto;margin-right:auto;">Siguiendo esta guía tendrás Nexus LMS operativo con dominio propio, HTTPS, Google Auth y hasta 300 usuarios.</p>
+    <a class="btn" href="index.html" style="background:white;color:var(--p-dark);">← Volver a la plataforma</a>
+  </div>
+</div>
+</body>
+</html>

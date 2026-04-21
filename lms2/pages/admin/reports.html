@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .report-bar { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+    .report-bar .label { font-size:13.5px;font-weight:600;min-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .report-bar .bar-wrap { flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden; }
+    .report-bar .bar-fill { height:100%;display:flex;align-items:center;padding-left:8px;font-size:11.5px;font-weight:700;color:white;border-radius:4px;transition:width .4s ease; }
+    .report-bar .count { font-size:12.5px;color:var(--dk3);min-width:60px;text-align:right;white-space:nowrap; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div><h1>Reportes y análisis</h1><p>Vista general del estado de la plataforma</p></div>
+        <button class="btn btn-ghost" onclick="window.print()">🖨 Exportar</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="r-courses">0</div><div class="lbl">Cursos activos</div></div>
+        <div class="stat-card accent"><div class="num" id="r-enrolled">0</div><div class="lbl">Matrículas totales</div></div>
+        <div class="stat-card success"><div class="num" id="r-subs">0</div><div class="lbl">Entregas recibidas</div></div>
+        <div class="stat-card dark"><div class="num" id="r-avg">—</div><div class="lbl">Progreso promedio</div></div>
+      </div>
+
+      <div class="grid-2" style="gap:20px;">
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Avance por curso</h3>
+          <div id="course-progress-chart"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Entregas por estado</h3>
+          <div id="submission-status-chart"></div>
+          <div class="divider"></div>
+          <h3 style="margin-bottom:12px;">Actividad por tipo de entrega</h3>
+          <div id="submission-type-chart"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h3 style="margin-bottom:16px;">Estudiantes con menor avance</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Estudiante</th><th>Curso</th><th>Progreso</th><th>Último acceso</th></tr></thead>
+            <tbody id="low-progress-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("reports");
+  buildTopbar("Reportes", ["Admin","Reportes"]);
+
+  const activeCourses = NexusDB.courses.filter(c=>c.status==="active");
+  const totalEnrolled = NexusDB.users.filter(u=>u.role==="student").reduce((s,u)=>s+(u.enrolledCourses?.length||0),0);
+  const subs = NexusDB.submissions;
+
+  // Stats
+  document.getElementById("r-courses").textContent  = activeCourses.length;
+  document.getElementById("r-enrolled").textContent = totalEnrolled;
+  document.getElementById("r-subs").textContent     = subs.length;
+
+  const students = NexusDB.users.filter(u=>u.role==="student");
+  let allProgress = [];
+  students.forEach(u => {
+    (u.enrolledCourses||[]).forEach(cid => allProgress.push(NexusDB.getCourseProgress(u.id, cid)));
+  });
+  const avgProg = allProgress.length ? Math.round(allProgress.reduce((a,b)=>a+b,0)/allProgress.length) : 0;
+  document.getElementById("r-avg").textContent = avgProg + "%";
+
+  // Course progress bars
+  const cpc = document.getElementById("course-progress-chart");
+  NexusDB.courses.forEach(c => {
+    const students2 = NexusDB.getCourseStudents(c.id);
+    const avg = students2.length
+      ? Math.round(students2.reduce((s,u)=>s+NexusDB.getCourseProgress(u.id,c.id),0)/students2.length)
+      : 0;
+    const color = avg>=70?"var(--success)":avg>=40?"var(--p)":"var(--acc)";
+    cpc.innerHTML += `<div class="report-bar">
+      <div class="label">${c.title.split(":")[0]}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${avg}%;background:${color};">${avg>10?avg+"%":""}</div></div>
+      <div class="count">${students2.length} est.</div>
+    </div>`;
+  });
+
+  // Submission status
+  const ssc = document.getElementById("submission-status-chart");
+  const statCounts = { submitted:0, reviewed:0, graded:0 };
+  subs.forEach(s => { if (statCounts[s.status]!==undefined) statCounts[s.status]++; });
+  const total = subs.length||1;
+  const statColors = { submitted:"var(--acc)", reviewed:"var(--p)", graded:"var(--success)" };
+  const statLabels = { submitted:"Pendientes", reviewed:"Revisadas", graded:"Calificadas" };
+  Object.entries(statCounts).forEach(([k,v]) => {
+    ssc.innerHTML += `<div class="report-bar">
+      <div class="label">${statLabels[k]}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(v/total*100)}%;background:${statColors[k]};">${v>0?v:""}</div></div>
+      <div class="count">${v}</div>
+    </div>`;
+  });
+
+  // Submission types
+  const stc = document.getElementById("submission-type-chart");
+  const typeCounts = {};
+  subs.forEach(s => { typeCounts[s.type] = (typeCounts[s.type]||0)+1; });
+  const typeColors = {assignment:"var(--p)",forum:"var(--acc)",survey:"var(--info)",reflection:"var(--success)"};
+  Object.entries(typeCounts).forEach(([k,v]) => {
+    stc.innerHTML += `<div class="report-bar">
+      <div class="label">${typeIcon(k)} ${k.charAt(0).toUpperCase()+k.slice(1)}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(v/total*100)}%;background:${typeColors[k]||"var(--dk3)"};">${v}</div></div>
+      <div class="count">${v}</div>
+    </div>`;
+  });
+  if (!Object.keys(typeCounts).length) stc.innerHTML = `<p class="text-muted text-sm">Sin entregas aún.</p>`;
+
+  // Low progress table
+  const tbody = document.getElementById("low-progress-tbody");
+  const progRows = [];
+  students.forEach(u => {
+    (u.enrolledCourses||[]).forEach(cid => {
+      const pct = NexusDB.getCourseProgress(u.id, cid);
+      const prog = NexusDB.getStudentProgress(u.id, cid);
+      progRows.push({ u, cid, pct, lastAccess: prog.lastAccess });
+    });
+  });
+  progRows.sort((a,b)=>a.pct-b.pct).slice(0,10).forEach(({u,cid,pct,lastAccess}) => {
+    const c = NexusDB.getCourse(cid);
+    const color = pct<30?"var(--danger)":pct<60?"var(--acc)":"var(--p)";
+    tbody.innerHTML += `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div class="avatar avatar-sm">${initials(u.name)}</div><span style="font-weight:600;">${u.name}</span>
+      </div></td>
+      <td>${c?.title.split(":")[0]||"—"}</td>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${pct}%;background:${color};"></div></div>
+        <span style="font-size:12px;font-weight:600;">${pct}%</span>
+      </div></td>
+      <td style="font-size:12.5px;color:var(--dk3);">${lastAccess?timeAgo(lastAccess):"—"}</td>
+    </tr>`;
+  });
+  if (!progRows.length) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--dk3);padding:20px;">Sin datos de progreso</td></tr>`;
+</script>
+</body>
+</html>

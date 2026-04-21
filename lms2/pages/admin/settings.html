@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajustes — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header"><h1>Ajustes de plataforma</h1><p>Configuración general de Nexus LMS</p></div>
+
+      <div style="max-width:680px;display:flex;flex-direction:column;gap:20px;">
+
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Acceso y registro</h3>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div><div style="font-size:13.5px;font-weight:600;">Auto-registro con Google</div><div style="font-size:12px;color:var(--dk3);">Permite que cualquier usuario con cuenta Google se registre solo</div></div>
+              <label class="toggle"><input type="checkbox" id="set-selfregister"><span class="toggle-track"></span></label>
+            </div>
+            <div class="divider"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div><div style="font-size:13.5px;font-weight:600;">Restringir dominio de correo</div><div style="font-size:12px;color:var(--dk3);">Solo permite ingresar correos del dominio institucional</div></div>
+              <label class="toggle"><input type="checkbox" id="set-domain"><span class="toggle-track"></span></label>
+            </div>
+            <div class="form-group" id="domain-field" style="display:none;">
+              <label class="form-label">Dominio permitido</label>
+              <input class="form-input" id="set-domain-val" placeholder="ejemplo.cl">
+              <span class="form-hint">Solo se permitirá el acceso a correos @ejemplo.cl</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Google OAuth</h3>
+          <div class="form-group">
+            <label class="form-label">Google Client ID</label>
+            <input class="form-input" id="set-gclient" placeholder="1234567890-abc.apps.googleusercontent.com" value="YOUR_GOOGLE_CLIENT_ID">
+            <span class="form-hint">Obtén este valor en Google Cloud Console → Credenciales. Ver guía de despliegue.</span>
+          </div>
+          <a href="../../DEPLOY.html" class="btn btn-ghost btn-sm" target="_blank">Ver guía de configuración →</a>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:16px;">Plataforma</h3>
+          <div class="form-group">
+            <label class="form-label">Idioma por defecto</label>
+            <select class="form-input" style="max-width:200px;">
+              <option selected>Español (Chile)</option>
+              <option>Español (neutro)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Zona horaria</label>
+            <select class="form-input" style="max-width:260px;">
+              <option selected>America/Santiago (CLT/CLST)</option>
+              <option>America/Bogota (COT)</option>
+              <option>America/Lima (PET)</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-size:13.5px;font-weight:600;">Modo mantenimiento</div><div style="font-size:12px;color:var(--dk3);">Muestra mensaje de mantenimiento a todos los usuarios</div></div>
+            <label class="toggle"><input type="checkbox" id="set-maint"><span class="toggle-track"></span></label>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--border2);">
+          <h3 style="margin-bottom:8px;">Información del sistema</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:var(--dk3);">
+            <div>Versión: <strong style="color:var(--dk);">Nexus LMS v1.0</strong></div>
+            <div>Cursos: <strong style="color:var(--dk);" id="inf-courses">0</strong></div>
+            <div>Usuarios: <strong style="color:var(--dk);" id="inf-users">0</strong></div>
+            <div>Entregas: <strong style="color:var(--dk);" id="inf-subs">0</strong></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="saveSettings()">Guardar ajustes</button>
+          <button class="btn btn-ghost" onclick="logout()">Cerrar sesión</button>
+        </div>
+        <div id="save-ok" class="alert alert-success hidden">✅ Ajustes guardados correctamente.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("settings");
+  buildTopbar("Ajustes", ["Admin","Ajustes"]);
+
+  document.getElementById("inf-courses").textContent = NexusDB.courses.length;
+  document.getElementById("inf-users").textContent   = NexusDB.users.length;
+  document.getElementById("inf-subs").textContent    = NexusDB.submissions.length;
+  document.getElementById("set-selfregister").checked = NexusDB.platform.allowSelfRegister;
+  document.getElementById("set-gclient").value        = NexusDB.platform.googleClientId||"";
+
+  document.getElementById("set-domain").addEventListener("change", function() {
+    document.getElementById("domain-field").style.display = this.checked?"block":"none";
+  });
+
+  function saveSettings() {
+    NexusDB.platform.allowSelfRegister = document.getElementById("set-selfregister").checked;
+    NexusDB.platform.googleClientId    = document.getElementById("set-gclient").value.trim();
+    const ok = document.getElementById("save-ok");
+    ok.classList.remove("hidden");
+    setTimeout(()=>ok.classList.add("hidden"),3000);
+  }
+</script>
+</body>
+</html>

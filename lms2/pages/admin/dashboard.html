@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .activity-feed { display: flex; flex-direction: column; gap: 12px; }
+    .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--r); border: 1px solid var(--border); }
+    .activity-item .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--p); margin-top: 5px; flex-shrink: 0; }
+    .activity-item.accent .dot { background: var(--acc); }
+    .activity-item .text { font-size: 13.5px; color: var(--dk2); flex: 1; }
+    .activity-item .text strong { color: var(--dk); font-weight: 600; }
+    .activity-item .time { font-size: 11.5px; color: var(--dk4); white-space: nowrap; }
+    .course-health { display: flex; flex-direction: column; gap: 10px; }
+    .course-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--border); }
+    .course-row .title { flex: 1; font-size: 13.5px; font-weight: 600; min-width: 0; }
+    .course-row .students { font-size: 12px; color: var(--dk3); white-space: nowrap; }
+    .quick-action { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--r-lg); cursor: pointer; transition: all .16s; text-decoration: none; }
+    .quick-action:hover { border-color: var(--p); background: var(--p-mist); transform: translateY(-2px); text-decoration: none; }
+    .quick-action .qa-icon { font-size: 24px; }
+    .quick-action .qa-label { font-size: 12.5px; font-weight: 600; color: var(--dk); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1 id="welcome-msg">Buen día, —</h1>
+          <p>Vista general de la plataforma</p>
+        </div>
+        <a class="btn btn-primary" href="courses.html">+ Nuevo curso</a>
+      </div>
+
+      <!-- STATS -->
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="st-courses">0</div><div class="lbl">Cursos totales</div></div>
+        <div class="stat-card accent"><div class="num" id="st-active">0</div><div class="lbl">Cursos activos</div></div>
+        <div class="stat-card dark"><div class="num" id="st-users">0</div><div class="lbl">Usuarios</div></div>
+        <div class="stat-card success"><div class="num" id="st-pending">0</div><div class="lbl">Entregas pendientes</div></div>
+      </div>
+
+      <!-- ACCIONES RÁPIDAS -->
+      <h2 style="margin-bottom:14px;">Acciones rápidas</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:28px;">
+        <a class="quick-action" href="courses.html"><div class="qa-icon">⊞</div><div class="qa-label">Crear curso</div></a>
+        <a class="quick-action" href="users.html"><div class="qa-icon">◉</div><div class="qa-label">Gestionar usuarios</div></a>
+        <a class="quick-action" href="submissions.html"><div class="qa-icon">◎</div><div class="qa-label">Ver entregas</div></a>
+        <a class="quick-action" href="reports.html"><div class="qa-icon">▦</div><div class="qa-label">Reportes</div></a>
+        <a class="quick-action" href="branding.html"><div class="qa-icon">◑</div><div class="qa-label">Branding</div></a>
+        <a class="quick-action" href="settings.html"><div class="qa-icon">⚙</div><div class="qa-label">Ajustes</div></a>
+      </div>
+
+      <div class="grid-2" style="gap:20px;">
+        <!-- CURSOS -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3>Estado de cursos</h3>
+            <a href="courses.html" class="btn btn-ghost btn-xs">Ver todos →</a>
+          </div>
+          <div class="course-health" id="course-health"></div>
+        </div>
+
+        <!-- ACTIVIDAD RECIENTE -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3>Actividad reciente</h3>
+            <a href="submissions.html" class="btn btn-ghost btn-xs">Ver entregas →</a>
+          </div>
+          <div class="activity-feed" id="activity-feed"></div>
+        </div>
+      </div>
+
+      <!-- TABLA ESTUDIANTES RECIENTES -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3>Usuarios recientes</h3>
+          <a href="users.html" class="btn btn-ghost btn-xs">Gestionar →</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Cursos inscritos</th><th>Último acceso</th><th>Estado</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("dashboard");
+  buildTopbar("Dashboard", ["Admin", "Dashboard"]);
+  initModals();
+
+  const hr = new Date().getHours();
+  document.getElementById("welcome-msg").textContent =
+    `${hr<12?"Buenos días":hr<19?"Buenas tardes":"Buenas noches"}, ${me.name.split(" ")[0]} 👋`;
+
+  document.getElementById("st-courses").textContent = NexusDB.courses.length;
+  document.getElementById("st-active").textContent  = NexusDB.courses.filter(c=>c.status==="active").length;
+  document.getElementById("st-users").textContent   = NexusDB.users.length;
+  document.getElementById("st-pending").textContent = NexusDB.submissions.filter(s=>s.status==="submitted").length;
+
+  // Course health
+  const ch = document.getElementById("course-health");
+  NexusDB.courses.forEach(c => {
+    const pct = Math.round((c.enrolledCount / c.maxStudents) * 100);
+    ch.innerHTML += `
+      <div class="course-row">
+        <div class="title truncate">${c.title.split(":")[0]}</div>
+        <div class="students">${c.enrolledCount}/${c.maxStudents}</div>
+        ${statusBadge(c.status)}
+        <div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  });
+
+  // Activity feed
+  const af = document.getElementById("activity-feed");
+  NexusDB.submissions.slice(0,4).forEach(s => {
+    af.innerHTML += `
+      <div class="activity-item${s.type==="assignment"?" accent":""}">
+        <div class="dot"></div>
+        <div class="text"><strong>${s.userName}</strong> entregó "${NexusDB.courses.flatMap(c=>c.modules).flatMap(m=>m.activities).find(a=>a.id===s.activityId)?.title||"actividad"}"</div>
+        <div class="time">${timeAgo(s.submittedAt)}</div>
+      </div>`;
+  });
+  if (!NexusDB.submissions.length) af.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Sin actividad reciente</p></div>`;
+
+  // Users table
+  const tbody = document.getElementById("users-tbody");
+  NexusDB.users.forEach(u => {
+    const roleLabel = {admin:"Administrador",teacher:"Docente",student:"Estudiante"}[u.role];
+    const roleBadge = {admin:"badge-dk",teacher:"badge-acc",student:"badge-primary"}[u.role];
+    tbody.innerHTML += `
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar avatar-sm">${u.avatar?`<img src="${u.avatar}">`:`${initials(u.name)}`}</div>
+          <div><div style="font-weight:600;">${u.name}</div><div style="font-size:12px;color:var(--dk4);">${u.email}</div></div>
+        </div></td>
+        <td><span class="badge ${roleBadge}">${roleLabel}</span></td>
+        <td>${(u.enrolledCourses||[]).length}</td>
+        <td>${u.role==="student"&&u.progress?timeAgo(Object.values(u.progress)[0]?.lastAccess||u.createdAt):"—"}</td>
+        <td><span class="badge badge-success">Activo</span></td>
+      </tr>`;
+  });
+</script>
+</body>
+</html>

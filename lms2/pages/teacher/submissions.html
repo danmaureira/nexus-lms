@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entregas — Docente Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+</head>
+<body>
+<!-- Redirige a la vista compartida de entregas con rol docente -->
+<script>
+  // Teacher submissions = same page as admin/submissions but auth checks role = teacher
+  // Redirecting to shared submissions view
+  document.addEventListener("DOMContentLoaded", () => {
+    // Load admin submissions page content inline
+    window.location.href = "../admin/submissions.html";
+  });
+</script>
+</body>
+</html>

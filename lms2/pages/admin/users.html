@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuarios — Nexus LMS Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div><h1>Gestión de Usuarios</h1><p id="ul">Cargando...</p></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import')">📤 Importar CSV</button>
+          <button class="btn btn-primary" onclick="openModal('modal-new-user')">+ Nuevo usuario</button>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card"><div class="num" id="st-all">0</div><div class="lbl">Total usuarios</div></div>
+        <div class="stat-card dark"><div class="num" id="st-admins">0</div><div class="lbl">Admins</div></div>
+        <div class="stat-card accent"><div class="num" id="st-teachers">0</div><div class="lbl">Docentes</div></div>
+        <div class="stat-card success"><div class="num" id="st-students">0</div><div class="lbl">Estudiantes</div></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" class="form-input" id="search-u" placeholder="🔍 Buscar por nombre o correo..." style="max-width:280px;" oninput="renderUsers()">
+        <select class="form-input" id="filter-role" style="max-width:150px;" onchange="renderUsers()">
+          <option value="">Todos los roles</option>
+          <option value="admin">Admin</option>
+          <option value="teacher">Docente</option>
+          <option value="student">Estudiante</option>
+        </select>
+        <select class="form-input" id="filter-course" style="max-width:200px;" onchange="renderUsers()">
+          <option value="">Todos los cursos</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Usuario</th><th>Rol</th><th>Cursos</th><th>Progreso prom.</th><th>Registrado</th><th>Acciones</th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-bg" id="modal-new-user">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Agregar usuario</h3><button class="modal-close" data-modal-close>×</button></div>
+    <div class="modal-body">
+      <div class="alert alert-info mb-4">En producción, los usuarios se registran automáticamente al iniciar sesión con Google. Aquí puedes pre-registrar manualmente.</div>
+      <div class="form-group"><label class="form-label">Nombre completo</label><input class="form-input" id="nu-name" placeholder="Nombre Apellido"></div>
+      <div class="form-group"><label class="form-label">Correo Gmail</label><input class="form-input" type="email" id="nu-email" placeholder="usuario@gmail.com"></div>
+      <div class="form-group"><label class="form-label">Rol</label>
+        <select class="form-input" id="nu-role">
+          <option value="student">Estudiante</option>
+          <option value="teacher">Docente</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Inscribir en curso</label>
+        <select class="form-input" id="nu-course"><option value="">Sin curso asignado</option></select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="addUser()">Agregar usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT CSV -->
+<div class="modal-bg" id="modal-import">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Importar usuarios desde CSV</h3><button class="modal-close" data-modal-close>×</button></div>
+    <div class="modal-body">
+      <div class="alert alert-info mb-4">Formato esperado del CSV:</div>
+      <pre style="background:var(--dk);color:#7ee787;font-size:12px;padding:12px;border-radius:8px;overflow-x:auto;margin-bottom:16px;">nombre,email,rol,curso_id
+Ana García,ana@gmail.com,student,c1
+Carlos Pérez,carlos@gmail.com,student,c1
+Dra. Valdivia,valdivia@gmail.com,teacher,</pre>
+      <div class="form-group"><label class="form-label">Pega el contenido CSV</label><textarea class="form-textarea" id="csv-input" rows="6" placeholder="nombre,email,rol,curso_id&#10;..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="importCSV()">Importar usuarios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR USUARIO -->
+<div class="modal-bg" id="modal-edit-user">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Editar usuario</h3><button class="modal-close" data-modal-close>×</button></div>
+    <div class="modal-body" id="edit-user-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="eu-delete-btn">Eliminar usuario</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUserEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me || me.role !== "admin") window.location.href = "../../index.html";
+  buildAdminSidebar("users");
+  buildTopbar("Usuarios", ["Admin","Usuarios"]);
+  initModals();
+
+  // Poblar selects
+  const cSelArr = [document.getElementById("nu-course"), document.getElementById("filter-course")];
+  NexusDB.courses.forEach(c => cSelArr.forEach(s => s.innerHTML += `<option value="${c.id}">${c.title.split(":")[0]}</option>`));
+
+  function renderUsers() {
+    const q  = document.getElementById("search-u").value.toLowerCase();
+    const r  = document.getElementById("filter-role").value;
+    const ci = document.getElementById("filter-course").value;
+    let list = NexusDB.users.filter(u =>
+      (!q  || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+      (!r  || u.role === r) &&
+      (!ci || (u.enrolledCourses||[]).includes(ci))
+    );
+
+    document.getElementById("st-all").textContent      = NexusDB.users.length;
+    document.getElementById("st-admins").textContent   = NexusDB.users.filter(u=>u.role==="admin").length;
+    document.getElementById("st-teachers").textContent = NexusDB.users.filter(u=>u.role==="teacher").length;
+    document.getElementById("st-students").textContent = NexusDB.users.filter(u=>u.role==="student").length;
+    document.getElementById("ul").textContent = `${NexusDB.users.length} usuarios registrados`;
+
+    const tbody = document.getElementById("users-tbody");
+    tbody.innerHTML = "";
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--dk3);padding:28px;">Sin resultados</td></tr>`; return; }
+    list.forEach(u => {
+      const roleLabel = {admin:"Admin",teacher:"Docente",student:"Estudiante"}[u.role];
+      const roleCls   = {admin:"badge-dk",teacher:"badge-acc",student:"badge-primary"}[u.role];
+      let avgPct = 0;
+      if (u.enrolledCourses?.length) {
+        avgPct = Math.round(u.enrolledCourses.reduce((s,cid)=>s+NexusDB.getCourseProgress(u.id,cid),0)/u.enrolledCourses.length);
+      }
+      tbody.innerHTML += `
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar avatar-sm">${u.avatar?`<img src="${u.avatar}">`:`${initials(u.name)}`}</div>
+            <div><div style="font-weight:600;">${u.name}</div><div style="font-size:12px;color:var(--dk4);">${u.email}</div></div>
+          </div></td>
+          <td><span class="badge ${roleCls}">${roleLabel}</span></td>
+          <td>${(u.enrolledCourses||[]).length}</td>
+          <td>
+            ${u.enrolledCourses?.length ? `
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${avgPct}%"></div></div>
+                <span style="font-size:12px;font-weight:600;">${avgPct}%</span>
+              </div>` : `<span style="color:var(--dk4);font-size:12.5px;">—</span>`}
+          </td>
+          <td style="font-size:12.5px;color:var(--dk3);">${formatDate(u.createdAt)}</td>
+          <td><button class="btn btn-ghost btn-xs" onclick="editUser('${u.id}')">Editar</button></td>
+        </tr>`;
+    });
+  }
+
+  function addUser() {
+    const name  = document.getElementById("nu-name").value.trim();
+    const email = document.getElementById("nu-email").value.trim();
+    const role  = document.getElementById("nu-role").value;
+    const cid   = document.getElementById("nu-course").value;
+    if (!name || !email) { alert("Nombre y correo son requeridos"); return; }
+    const newUser = {
+      id: "u" + Date.now(), googleId: "", name, email, avatar: "", role,
+      bio: "", phone: "", enrolledCourses: cid ? [cid] : [],
+      progress: {}, createdAt: new Date().toISOString().split("T")[0]
+    };
+    NexusDB.users.push(newUser);
+    if (cid) { const c = NexusDB.getCourse(cid); if (c) c.enrolledCount++; }
+    closeModal("modal-new-user");
+    renderUsers();
+  }
+
+  let editingUserId = null;
+  function editUser(id) {
+    editingUserId = id;
+    const u = NexusDB.getUser(id);
+    const courseOptions = NexusDB.courses.map(c =>
+      `<option value="${c.id}" ${(u.enrolledCourses||[]).includes(c.id)?"selected":""}>${c.title.split(":")[0]}</option>`).join("");
+    document.getElementById("edit-user-body").innerHTML = `
+      <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="eu-name" value="${u.name}"></div>
+      <div class="form-group"><label class="form-label">Email (solo lectura)</label><input class="form-input" value="${u.email}" disabled></div>
+      <div class="form-group"><label class="form-label">Rol</label>
+        <select class="form-input" id="eu-role">
+          <option value="student" ${u.role==="student"?"selected":""}>Estudiante</option>
+          <option value="teacher" ${u.role==="teacher"?"selected":""}>Docente</option>
+          <option value="admin"   ${u.role==="admin"  ?"selected":""}>Administrador</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Cursos inscritos</label>
+        <select class="form-input" id="eu-courses" multiple size="4">${courseOptions}</select>
+        <span class="form-hint">Ctrl+Click para seleccionar múltiples</span>
+      </div>`;
+    document.getElementById("eu-delete-btn").onclick = () => deleteUser(id);
+    openModal("modal-edit-user");
+  }
+
+  function saveUserEdit() {
+    const u = NexusDB.getUser(editingUserId);
+    u.name = document.getElementById("eu-name").value;
+    u.role = document.getElementById("eu-role").value;
+    const sel = document.getElementById("eu-courses");
+    u.enrolledCourses = Array.from(sel.selectedOptions).map(o=>o.value);
+    closeModal("modal-edit-user");
+    renderUsers();
+  }
+
+  function deleteUser(id) {
+    if (!confirm("¿Eliminar este usuario? Esta acción no se puede deshacer.")) return;
+    const idx = NexusDB.users.findIndex(u=>u.id===id);
+    if (idx > -1) NexusDB.users.splice(idx, 1);
+    closeModal("modal-edit-user");
+    renderUsers();
+  }
+
+  function importCSV() {
+    const csv = document.getElementById("csv-input").value.trim();
+    const lines = csv.split("\n").slice(1); // skip header
+    let count = 0;
+    lines.forEach(line => {
+      const [name, email, role, cid] = line.split(",").map(s=>s.trim());
+      if (!name || !email) return;
+      const u = { id:"u"+Date.now()+Math.random(), googleId:"", name, email, avatar:"", role:role||"student", bio:"", phone:"", enrolledCourses: cid?[cid]:[], progress:{}, createdAt:new Date().toISOString().split("T")[0] };
+      NexusDB.users.push(u);
+      if (cid) { const c = NexusDB.getCourse(cid); if (c) c.enrolledCount++; }
+      count++;
+    });
+    closeModal("modal-import");
+    alert(`✅ Se importaron ${count} usuarios correctamente.`);
+    renderUsers();
+  }
+
+  renderUsers();
+</script>
+</body>
+</html>

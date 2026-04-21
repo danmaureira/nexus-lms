@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Perfil — Nexus LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/nexus.css">
+  <style>
+    .profile-header { background: linear-gradient(135deg, var(--dk) 0%, var(--dk2) 100%); border-radius: var(--r-xl); padding: 28px 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 24px; }
+    .profile-avatar-wrap { position: relative; }
+    .profile-avatar-wrap .avatar { border: 4px solid rgba(255,255,255,.2); }
+    .avatar-edit-btn { position: absolute; bottom: 0; right: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--p); color: white; border: 2px solid white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; }
+    .profile-info h2 { color: white; font-size: 1.3rem; margin-bottom: 3px; }
+    .profile-info p  { color: rgba(255,255,255,.65); font-size: 13.5px; }
+    .profile-badges  { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .cert-card { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .cert-icon { font-size: 28px; }
+    .cert-info h4 { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
+    .cert-info p  { font-size: 12px; color: var(--dk3); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-content">
+    <div class="page anim-fadeup">
+      <div class="page-header"><h1>Mi Perfil</h1><p>Administra tu información personal y preferencias</p></div>
+
+      <!-- PROFILE HEADER -->
+      <div class="profile-header">
+        <div class="profile-avatar-wrap">
+          <div class="avatar avatar-xl" id="profile-avatar-main"></div>
+          <div class="avatar-edit-btn" onclick="document.getElementById('avatar-file').click()">✎</div>
+          <input type="file" id="avatar-file" accept="image/*" style="display:none;" onchange="changeAvatar(this)">
+        </div>
+        <div class="profile-info">
+          <h2 id="ph-name">—</h2>
+          <p id="ph-email">—</p>
+          <p id="ph-role">Estudiante</p>
+          <div class="profile-badges" id="ph-badges"></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:24px;align-items:start;">
+
+        <!-- FORMULARIO PERFIL -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <h3 style="margin-bottom:16px;">Información personal</h3>
+            <div class="form-group"><label class="form-label">Nombre completo</label><input class="form-input" id="f-name" placeholder="Tu nombre completo"></div>
+            <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="f-email" type="email" disabled style="opacity:.65;cursor:not-allowed;"><span class="form-hint">El correo es gestionado por Google y no puede editarse aquí.</span></div>
+            <div class="form-group"><label class="form-label">Teléfono de contacto (opcional)</label><input class="form-input" id="f-phone" type="tel" placeholder="+56 9 XXXX XXXX"></div>
+            <div class="form-group"><label class="form-label">Biografía profesional</label><textarea class="form-textarea" id="f-bio" rows="3" placeholder="Cuéntanos brevemente quién eres, en qué institución trabajas y qué enseñas..."></textarea></div>
+            <button class="btn btn-primary" onclick="saveProfile()">Guardar cambios</button>
+            <div id="save-ok" class="alert alert-success hidden mt-3">✅ Perfil actualizado correctamente.</div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:14px;">Preferencias de notificaciones</h3>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13.5px;font-weight:600;">Nuevas sesiones sincrónicas</div><div style="font-size:12px;color:var(--dk3);">Recibe aviso cuando se agenda una sesión Zoom</div></div>
+                <label class="toggle"><input type="checkbox" checked><span class="toggle-track"></span></label>
+              </div>
+              <div class="divider"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13.5px;font-weight:600;">Retroalimentación de entregas</div><div style="font-size:12px;color:var(--dk3);">Notificación cuando el docente revisa tu tarea</div></div>
+                <label class="toggle"><input type="checkbox" checked><span class="toggle-track"></span></label>
+              </div>
+              <div class="divider"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13.5px;font-weight:600;">Nuevos módulos disponibles</div><div style="font-size:12px;color:var(--dk3);">Aviso cuando se publica un nuevo módulo</div></div>
+                <label class="toggle"><input type="checkbox"><span class="toggle-track"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESUMEN ACADÉMICO -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <h3 style="margin-bottom:14px;">Resumen académico</h3>
+            <div id="academic-summary"></div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:14px;">Certificados obtenidos</h3>
+            <div id="certs-list"></div>
+            <div class="alert alert-info mt-3" style="font-size:12.5px;">Los certificados se generan automáticamente al completar un curso al 100%.</div>
+          </div>
+
+          <div class="card" style="border-color:var(--danger-bg);">
+            <h3 style="margin-bottom:8px;color:var(--danger);">Zona de peligro</h3>
+            <p style="font-size:13.5px;color:var(--dk3);margin-bottom:12px;">Estas acciones no se pueden deshacer.</p>
+            <button class="btn btn-danger btn-sm" onclick="logout()">Cerrar sesión</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/core.js"></script>
+<script src="../../js/layout.js"></script>
+<script>
+  const me = getSession(); if (!me) window.location.href = "../../index.html";
+  buildStudentSidebar("profile");
+  buildTopbar("Mi Perfil");
+
+  // Rellenar header
+  const av = document.getElementById("profile-avatar-main");
+  av.innerHTML = me.avatar ? `<img src="${me.avatar}">` : initials(me.name);
+  document.getElementById("ph-name").textContent  = me.name;
+  document.getElementById("ph-email").textContent = me.email;
+
+  // Badges
+  const badges = document.getElementById("ph-badges");
+  (me.enrolledCourses||[]).forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    if (c) badges.innerHTML += `<span class="badge badge-primary">${c.title.split(":")[0]}</span>`;
+  });
+
+  // Formulario
+  document.getElementById("f-name").value  = me.name;
+  document.getElementById("f-email").value = me.email;
+  document.getElementById("f-phone").value = me.phone||"";
+  document.getElementById("f-bio").value   = me.bio||"";
+
+  // Resumen académico
+  const summary = document.getElementById("academic-summary");
+  (me.enrolledCourses||[]).forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    if (!c) return;
+    const pct = NexusDB.getCourseProgress(me.id, cid);
+    const prog = NexusDB.getStudentProgress(me.id, cid);
+    summary.innerHTML += `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:4px;">
+          <span style="font-weight:600;">${c.title.split(":")[0]}</span>
+          <span style="color:var(--p);font-weight:600;">${pct}%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+        <div style="font-size:12px;color:var(--dk3);margin-top:3px;">${prog.completedModules.length} de ${c.modules.length} módulos · Último acceso: ${prog.lastAccess?timeAgo(prog.lastAccess):"—"}</div>
+      </div>`;
+  });
+  if (!me.enrolledCourses?.length) summary.innerHTML = `<p class="text-muted text-sm">Sin cursos inscritos.</p>`;
+
+  // Certificados
+  const certs = document.getElementById("certs-list");
+  let certFound = false;
+  (me.enrolledCourses||[]).forEach(cid => {
+    const c = NexusDB.getCourse(cid);
+    if (!c) return;
+    const pct = NexusDB.getCourseProgress(me.id, cid);
+    if (pct === 100) {
+      certFound = true;
+      certs.innerHTML += `
+        <div class="cert-card">
+          <div class="cert-icon">🎓</div>
+          <div class="cert-info">
+            <h4>${c.title}</h4>
+            <p>${NexusDB.platform.institution} · ${c.duration}</p>
+          </div>
+          <button class="btn btn-ghost btn-xs">Descargar</button>
+        </div>`;
+    }
+  });
+  if (!certFound) certs.innerHTML = `<p class="text-muted text-sm">Completa un curso al 100% para obtener tu certificado.</p>`;
+
+  function saveProfile() {
+    const u = NexusDB.getUser(me.id);
+    u.name  = document.getElementById("f-name").value;
+    u.phone = document.getElementById("f-phone").value;
+    u.bio   = document.getElementById("f-bio").value;
+    saveSession(u);
+    document.getElementById("ph-name").textContent = u.name;
+    const ok = document.getElementById("save-ok");
+    ok.classList.remove("hidden");
+    setTimeout(() => ok.classList.add("hidden"), 3000);
+  }
+
+  function changeAvatar(input) {
+    if (!input.files?.[0]) return;
+    const r = new FileReader();
+    r.onload = e => {
+      const u = NexusDB.getUser(me.id);
+      u.avatar = e.target.result;
+      saveSession(u);
+      av.innerHTML = `<img src="${e.target.result}">`;
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+</script>
+</body>
+</html>
