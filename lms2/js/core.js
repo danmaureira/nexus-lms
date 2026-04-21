@@ -1,3 +1,22 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCmyDHuExUoG67zzb_A1tZP4XyHq5hZfvE",
+  authDomain: "nexus-lms-b1bda.firebaseapp.com",
+  projectId: "nexus-lms-b1bda",
+  storageBucket: "nexus-lms-b1bda.firebasestorage.app",
+  messagingSenderId: "333825878186",
+  appId: "1:333825878186:web:3a6c76e620503e62ba08d3"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+
 // ═══════════════════════════════════════════════════════
 //  NEXUS LMS — Core Data Layer
 //  Estado global, persistencia y helpers
