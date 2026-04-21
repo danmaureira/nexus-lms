@@ -26,18 +26,32 @@ export async function iniciarSesionSegura() {
     const resultado = await signInWithPopup(auth, provider);
     const emailUsuario = resultado.user.email;
 
-    // 2. Revisa la "Lista de Invitados" en tu base de datos
-    // Asumiremos que crearás una lista llamada 'usuarios_aprobados'
+    // 2. Busca al usuario en la base de datos
     const referenciaUsuario = doc(db, "usuarios_aprobados", emailUsuario);
     const datosUsuario = await getDoc(referenciaUsuario);
 
-    // 3. Toma la decisión
+    // 3. Toma la decisión de enrutamiento
     if (datosUsuario.exists()) {
-      alert("¡Bienvenido a la plataforma!");
-      // Aquí luego programaremos que lo envíe a /pages/student/dashboard.html
+      // Extrae la información del usuario
+      const datos = datosUsuario.data();
+      const rolDelUsuario = datos.rol;
+
+      // Redirige según el rol exacto
+      if (rolDelUsuario === "admin") {
+        window.location.href = "pages/admin/dashboard.html";
+      } else if (rolDelUsuario === "teacher") {
+        window.location.href = "pages/teacher/dashboard.html";
+      } else if (rolDelUsuario === "student") {
+        window.location.href = "pages/student/dashboard.html";
+      } else {
+        alert("Tu rol no está configurado correctamente en el sistema. Escríbenos a solicitudes.academicas@academia.cl");
+        await signOut(auth);
+      }
+      
     } else {
-      alert("Acceso denegado: El administrador aún no ha vinculado tu cuenta institucional a la plataforma.");
-      await signOut(auth); // Lo expulsa inmediatamente
+      // Si el correo no existe en la base de datos
+      alert("Acceso denegado: Los estudiantes nuevos serán vinculados a la plataforma en marzo. Recuerda utilizar tu correo institucional. Quedamos atentos ante cualquier otra duda en solicitudes.academicas@academia.cl.");
+      await signOut(auth); // Lo expulsa
     }
   } catch (error) {
     console.error("Error al iniciar sesión:", error);
